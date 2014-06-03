@@ -60,6 +60,16 @@ const char days[][4] PROGMEM = {           // Days of the week, Jan-1-2000 was S
     "Sat","Sun","Mon","Tue","Wed","Thu","Fri"
 };
 
+time_var now = {
+    0,          // halfsec  Half Seconds [0-119]
+    0,          // min      Minutes      [0-59]
+    12,         // hour     Hours        [0-23]
+    22,         // mday     Day          [0-30]  1st day of the month is 0
+    2,          // mon      Month        [0-11]  January is 0
+    14,         // year     Year since 2000
+    1,          // wday     Day of week  [0-6]   Saturday is 0
+};
+
 uint8_t Selected=0;   // Selected item to change
 #define SECOND      1
 #define MINUTE      2
@@ -128,14 +138,14 @@ ISR(RTC_OVF_vect) {
     }
 }
 
-// 60 -> 2*PI
+// 60 values -> 2*PI
 int8_t Sine(int8_t angle) {
 //    if(angle<0) angle=60-angle;
     while(angle>=60) angle-=60;
     return (int8_t)pgm_read_byte_near(SIN60+angle);
 }
 
-// 60 -> 2*PI
+// 60 values -> 2*PI
 int8_t Cosine(int8_t angle) {
 //    if(angle<0) angle=-angle;
     angle+=15;
@@ -268,6 +278,7 @@ void WATCH(void) {
                 if(Selected>YEAR) Selected=0;
             }
             if(Selected) {
+                uint8_t temp;
                 Change_timeout = 120;   // 120 half seconds -> 1 Minute
                 cli();  // Prevent the RTC interrupt from changing the time in this block
                 switch(Selected) {
@@ -276,20 +287,23 @@ void WATCH(void) {
                         if(testbit(Key,KD)) if(now.halfsec) now.halfsec--;
                     break;
                     case MINUTE:
-                        if(testbit(Key,KI)) if(now.min<59) now.min++;
-                        if(testbit(Key,KD)) if(now.min) now.min--;
+                        if(testbit(Key,KI)) if(now.min<59) now.min++; else now.min=0;
+                        if(testbit(Key,KD)) if(now.min) now.min--; else now.min=59;
                     break;
                     case HOUR:
-                        if(testbit(Key,KI)) if(now.hour<59) now.hour++;
-                        if(testbit(Key,KD)) if(now.hour) now.hour--;
+                        if(testbit(Key,KI)) if(now.hour<23) now.hour++; else now.hour=0;
+                        if(testbit(Key,KD)) if(now.hour) now.hour--; else now.hour=23;
                     break;
                     case DAY:
-                        if(testbit(Key,KI)) if(now.mday<pgm_read_byte_near(monthDays+now.mon)-1) now.mday++;
-                        if(testbit(Key,KD)) if(now.mday) now.mday--;
+                        temp=pgm_read_byte_near(monthDays+now.mon)-1;
+                        if(testbit(Key,KI)) if(now.mday<temp) now.mday++; else now.mday=0;
+                        if(testbit(Key,KD)) if(now.mday) now.mday--; else now.mday=temp;
                     break;
                     case MONTH:
-                        if(testbit(Key,KI)) if(now.mon<11) now.mon++;
-                        if(testbit(Key,KD)) if(now.mon) now.mon--;
+                        if(testbit(Key,KI)) if(now.mon<11) now.mon++; else now.mon=0;
+                        if(testbit(Key,KD)) if(now.mon) now.mon--; else now.mon=11;
+                        temp=pgm_read_byte_near(monthDays+now.mon)-1;                        
+                        if(now.mday>temp) now.mday=temp;
                     break;
                     case YEAR:
                         if(testbit(Key,KI)) if(now.year<98) now.year++;

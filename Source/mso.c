@@ -2592,20 +2592,24 @@ static inline void Measurements(void) {
     setbit(Misc,bigfont);
     lcd_goto(0,2);
     if(testbit(MStatus,vdc)) {         // Display VDC
-        uint8_t oldctrlb, oldprescale, oldch0, oldch1;
+        uint8_t oldctrlab, oldprescalea, oldctrlbb, oldprescaleb, oldch0, oldch1;
         if(testbit(MStatus,stop)) goto cancelvdc;
-        oldctrlb = ADCA.CTRLB;
-        oldprescale = ADCA.PRESCALER;
+        oldctrlab = ADCA.CTRLB;
+        oldprescalea = ADCA.PRESCALER;
+        oldctrlbb = ADCB.CTRLB;
+        oldprescaleb = ADCB.PRESCALER;
         oldch0=ADCA.CH0.CTRL;
-        oldch1=ADCA.CH1.CTRL;
+        oldch1=ADCB.CH0.CTRL;
         ADCA.CTRLB = 0x90;          // signed mode, no free run, 12 bit right adjusted, low impedance
         ADCA.PRESCALER = 0x07;      // Prescaler 512 (125kHZ ADC clock)
+        ADCB.CTRLB = 0x90;          // signed mode, no free run, 12 bit right adjusted, low impedance
+        ADCB.PRESCALER = 0x07;      // Prescaler 512 (125kHZ ADC clock)
         do {
             ADCA.CH0.CTRL     = 0x83;   // Start conversion, Differential input with gain
-            ADCA.CH1.CTRL     = 0x83;   // Start conversion, Differential input with gain
+            ADCB.CH0.CTRL     = 0x83;   // Start conversion, Differential input with gain
             _delay_us(400);
             avrg1-= (int16_t)ADCA.CH0.RES;
-            avrg2-= (int16_t)ADCA.CH1.RES;
+            avrg2-= (int16_t)ADCB.CH0.RES;
             if(testbit(MStatus,update)) goto cancelvdc;
         } while(++i);
 		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH1);    // CH1 Offset Calibration
@@ -2618,10 +2622,12 @@ static inline void Measurements(void) {
 //		avrg2*=calibrate;
         v1=((avrg1>>5)+v1)/2; // no average: avrg2>>5;
         v2=((avrg2>>5)+v2)/2; // no average: avrg2>>5;
-        ADCA.CH1.CTRL = oldch1;
+        ADCB.CH0.CTRL = oldch1;
         ADCA.CH0.CTRL = oldch0;
-        ADCA.PRESCALER = oldprescale;
-        ADCA.CTRLB = oldctrlb;
+        ADCA.PRESCALER = oldprescalea;
+        ADCA.CTRLB = oldctrlab;
+        ADCB.PRESCALER = oldprescaleb;
+        ADCB.CTRLB = oldctrlbb;
 cancelvdc:
         printV(v1,0);
         lcd_goto(64,2);
@@ -3080,7 +3086,7 @@ ISR(TCE0_OVF_vect) {
                 if((Index&0x01)==0) {      // erase when index is even
                     vline=127-(Index>>1);      // clear next vertical line
                     u8CursorY=0;
-                    address = vline*16;
+                    address = vline*18;
                     for(uint8_t i=0; i<16; i++) Disp_send.buffer[address++] = 0;
                 }
             }

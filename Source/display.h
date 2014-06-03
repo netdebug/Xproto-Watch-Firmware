@@ -73,6 +73,7 @@ void GLCD_LcdOff(void);
 void GLCD_Print(const char *);
 void lcd_putsp(const char *);
 void lcd_put5x8(const char *);
+void GLCD_Bigchar (char u8Char);
 void GLCD_Putchar (char);
 void putchar5x8(char u8Char);
 void printN(uint8_t Data);

@@ -192,16 +192,6 @@ uint8_t EEMEM EESleepTime = 32;     // Sleep timeout in minutes
 uint8_t EEMEM EEDACgain   = 0;      // DAC gain calibration
 uint8_t EEMEM EEDACoffset = 0;      // DAC offset calibration
 
-time_var now = {
-    0,          // halfsec  Half Seconds [0-119]
-    28,         // min      Minutes      [0-59]
-    7,          // hour     Hours        [0-23]
-    0,          // mday     Day          [0-30]
-    2,          // mon      Month        [0-11]  January is 0
-    14,         // year     Year since 2000
-    0,          // wday     Day of week  [0-6]   Saturday is 0
-};
-
 //static void CalibrateDAC(void);
 void SimpleADC(void);
 static inline void LoadEE(void);                  // Load settings from EEPROM
@@ -297,7 +287,7 @@ int main(void) {
         show_display(); WaitDisplay();
     }*/
     Key=K1;
-    uint8_t item=1, animating=0;   // Menu item
+    uint8_t item=2, animating=0;   // Menu item
     uint8_t old_item=0;
     int8_t step=15,from=-101;
 	
@@ -326,7 +316,7 @@ int main(void) {
                     if(testbit(Key,K2)) {
                         CALENDAR();           // go to WATCH
                         old_item=0; step=15; from=-101;
-                    }                             
+                    }
                 break;
                 case 2:     // Oscilloscope Menu
                     if(testbit(Key,K1)) {
@@ -347,12 +337,6 @@ int main(void) {
                     }                        
                 break;
                 case 3:     // Sniffer Menu
-                    if(testbit(Key,K1)) {
-                        CPU_Fast();                        
-                        Sniff();              // go to Sniffer
-                        CPU_Slow();
-                        old_item=0; step=15; from=-101;
-                    }                 
                 break;
                 case 4:     // Frequency Counter Menu
                 break;
@@ -423,7 +407,7 @@ ISR(PORTF_INT0_vect) {
     OFFGRN();   // Avoid having the LED on during the interrupt
     OFFRED();
     for(i=25; i>0; i--) {
-        _delay_ms(1);
+        delay_ms(1);
 		in = PORTF.IN;              // Read port
 		if(j!=in) { j=in; i=10; }   // Value changed
 	}
@@ -434,7 +418,7 @@ ISR(PORTF_INT0_vect) {
     if(!testbit(in,5)) setbit(Key,KB);  // Back
     if(!testbit(in,7)) {  // Light
         setbit(VPORT1.OUT,0);
-        _delay_ms(1000);
+        delay_ms(1000);
         clrbit(VPORT1.OUT,0);
 		if(!testbit(PORTF.IN, 6)) Jump_boot();
     }        
@@ -474,7 +458,7 @@ void CPU_Fast(void) {
     OSC.XOSCCTRL = 0xCB;    // Crystal type 0.4-16 MHz XTAL - 16K CLK Start Up time
     OSC.PLLCTRL = 0xC2;     // XOSC is PLL Source - 2x Factor (32MHz)
     OSC.CTRL |= OSC_RC2MEN_bm | OSC_XOSCEN_bm;
-    _delay_ms(2);
+    delay_ms(2);
     // Switch to internal 2MHz if crystal fails
     if(!testbit(OSC.STATUS,OSC_XOSCRDY_bp)) {   // Check XT ready flag
         OSC.XOSCCTRL = 0x00;    // Disable external oscillators
@@ -482,7 +466,7 @@ void CPU_Fast(void) {
         //OSC.PLLCTRL = 0x10;     // 2MHz is PLL Source - 16x Factor (32MHz)
     }
     OSC.CTRL = OSC_RC2MEN_bm | OSC_RC32MEN_bm | OSC_PLLEN_bm | OSC_XOSCEN_bm;
-    _delay_ms(2);
+    delay_ms(2);
     CCPWrite(&CLK.CTRL, CLK_SCLKSEL_PLL_gc);    // Switch to PLL clock
     // Clock OK!
     OSC.CTRL = OSC_RC32MEN_bm | OSC_PLLEN_bm | OSC_XOSCEN_bm;    // Disable internal 2MHz
@@ -495,7 +479,7 @@ void CPU_Fast(void) {
 
 void CPU_Slow(void) {
     OSC.CTRL |= OSC_RC2MEN_bm;  // Enable internal 2MHz
-    _delay_ms(2);
+    delay_ms(2);
     CCPWrite(&CLK.CTRL, CLK_SCLKSEL_RC2M_gc);    // Switch to 2MHz clock
     OSC.CTRL &= ~OSC_PLLEN_bm;
     OSC.PLLCTRL = 0;
@@ -831,3 +815,14 @@ ISR(TCD2_HUNF_vect) {
     SLEEP.CTRL = 0x00;
 }
 
+// Delay in mili seconds, take into account current CPU speed
+void delay_ms(uint16_t n) {
+    while(n--) {
+        if(CLK.CTRL==0) {   // Running at 2MHz
+            _delay_us(62);
+        }
+        else {              // Running at 32MHz
+            _delay_us(999);
+        }
+    }        
+}    
