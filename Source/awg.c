@@ -19,9 +19,10 @@ email me at: gabriel@gabotronics.com
 #include <avr/interrupt.h>
 #include "main.h"
 #include "awg.h"
+#include "tables.h"
 
 // Global AWG variables
-uint8_t AWGBuffer[256]; // AWG Output Buffer
+uint8_t AWGBuffer[BUFFER_AWG]; // AWG Output Buffer
 uint8_t cycles;         // Cycles in AWG buffer
 
 void moveF(void) {
@@ -42,7 +43,7 @@ void moveF(void) {
 
 // Output Frequency = cycles * 125000 / Period
 void BuildWave(void) {
-    uint8_t i,j;
+    uint16_t i,j;
     int8_t *p;
     uint32_t Flevel=1600000;
     if(M.AWGamp>0)                  M.AWGamp=0;                 // AWGAmp must be negative
@@ -71,21 +72,20 @@ void BuildWave(void) {
             do {
                 Seed = 25173 * Seed + 1;
                 *p++ = hibyte(Seed);
-            } while(++i);
+            } while(++i<BUFFER_AWG);
         break;
         case 1: // Sine
-            do { *p++ = Sin(i+64); } while(++i);
+            do { *p++ = pgm_read_byte_near(Sine+i); } while(++i<BUFFER_AWG);
         break;
         case 2: // Square
-            do { *p++ = (i<128)?-127:127; } while(++i);
+            do { *p++ = (i<512)?-127:127; } while(++i<BUFFER_AWG);
         break;
         case 3: // Triangle
-            for(;i<128;i++) *p++ = 127-((i)<<1);
-            do { *p++ = -127+(i<<1); } while(++i);
+            for(;i<512;i++) *p++ = 127-((i)>>1);
+            do { *p++ = -127+(i>>1); } while(++i<BUFFER_AWG);
         break;
         case 4: // Exponential
-            for(;i<128;i++) *p++ = -pgm_read_byte_near(Exp+i);
-            do { *p++ = pgm_read_byte_near(Exp-128+i); } while(++i);
+			do { *p++ = pgm_read_byte_near(Exponential+i); } while(++i<BUFFER_AWG);
         break;
         case 5: // Custom wave from EEPROM
             eeprom_read_block(Temp.DATA.AWGTemp1, EEwave, 256);
@@ -93,35 +93,36 @@ void BuildWave(void) {
     }
     // Prepare buffer:
     // ******** Duty cycle ********
-    uint16_t step=0;
-	uint16_t d;
-    i=0; d=(256-M.AWGduty)<<1;
-	int8_t k;
+    uint32_t step=0;
+	uint16_t inc;
+    i=0; inc=(256-M.AWGduty)<<1;
     p=(int8_t *)Temp.DATA.AWGTemp1;
     do {
-        j=hibyte(step);
+        j=step>>8;
         Temp.DATA.AWGTemp2[j] = *p;
-        k=*p++;
-        if(j<255) Temp.DATA.AWGTemp2[j+1] = (k+(*p))/2;
-        step+=d;
-        if(i==127) d=M.AWGduty<<1;
-    } while(++i);
-    i=0;
-    step = ((6250000 * cycles) / M.AWGdesiredF ) - 1;
+        int8_t k=*p++;
+//        if(j<1023) Temp.DATA.AWGTemp2[j+1] = (k+(*p))/2;    // With interpolation
+        if(j<1023) Temp.DATA.AWGTemp2[j+1] = *p;            // Without interpolation
+        step+=inc;
+        if(i==511) inc=M.AWGduty<<1;
+    } while(++i<1024);
+    uint16_t period;
+    period = ((6250000 * cycles) / M.AWGdesiredF ) - 1;
     PMIC.CTRL = 0x06;   // Disable low level interrupts
     if(cycles>1) TCD1.CTRLA = 0x01;   // Prescaler: clk/1
     else         TCD1.CTRLA = 0x02;   // Prescaler: clk/2
     // Avoid discontinuity when changing frequency by writing to PERBUF
-    TCD1.PERBUF = step;    // Set Period
+    TCD1.PERBUF = period;    // Set Period
     uint8_t c;
     c=cycles>>1;
     if(c==0) c++;
+    i=0;
     do {
     // ******** Multiply by Gain ********
-        j=FMULS8(M.AWGamp,Temp.DATA.AWGTemp2[(uint8_t)(i*c)]);
+        j=FMULS8(M.AWGamp,Temp.DATA.AWGTemp2[(uint16_t)(i*c)&0x03FF]);	// Keep index < 1024
     // ******** Add Offset ********
         AWGBuffer[i]=saddwsat(j,M.AWGoffset);
-    } while(++i);
+    } while(++i<BUFFER_AWG);
     clrbit(MStatus, updateawg);
     PMIC.CTRL = 0x07; // Enable all interrupts
 }

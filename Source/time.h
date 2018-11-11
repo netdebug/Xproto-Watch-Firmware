@@ -4,18 +4,54 @@
 typedef struct {
     uint8_t sec;                 // Seconds.        [0-59]
     uint8_t min;                 // Minutes.        [0-59]
-    uint8_t hour;                // Hours.          [0-11]
-    uint8_t mday;                // Day.            [0-30]
-    uint8_t mon;                 // Month.          [0-11]
+    uint8_t hour;                // Hours.          [0-23]
+    uint8_t mday;                // Day.            [1-31]
+    uint8_t mon;                 // Month.          [1-12]
     uint8_t year;                // Year since 2000
     uint8_t wday;                // Day of week.    [0-6]
 } time_var;
 
 #define LEAP_YEAR(year) ((year%4)==0)   // Valid for the range the watch works on
 
-extern time_var now;
+extern volatile time_var now;
+extern time_var EEMEM saved_time;
 
 void gettime(time_var *timep);
 void settime(time_var *timep);
-void WATCH(void);
-void CALENDAR(void);
+void Watch(void);
+void Calendar(void);
+void findweekday(time_var *timeptr);
+void SetTimeTimer(void);
+
+// Change item definitions
+#define SECOND          1
+#define MINUTE          2
+#define HOUR            3
+#define DAY             4
+#define MONTH           5
+#define YEAR            6
+#define ALARM_MINUTE    7
+#define ALARM_HOUR      8
+
+// Day of the week definitions
+#define SATURDAY        0
+#define SUNDAY          1
+#define MONDAY          2
+#define TUESDAY         3
+#define WEDNESDAY       4
+#define THURSDAY        5
+#define FRIDAY          6
+
+// Month definitions
+#define JANUARY         1
+#define FEBRUARY        2
+#define MARCH           3
+#define APRIL           4
+#define MAY             5
+#define JUNE            6
+#define JULY            7
+#define AUGUST          8
+#define SEPTEMBER       9
+#define OCTOBER         10
+#define NOVEMBER        11
+#define DECEMBER        12

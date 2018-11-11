@@ -43,11 +43,8 @@
 typedef struct {
     uint8_t     *spidata;
     uint8_t     *buffer;
-    uint8_t     display_setup1[2];
-    uint8_t     buffer1[DISPLAY_DATA_SIZE];
-    uint8_t     display_setup2[2];
-    uint8_t     buffer2[DISPLAY_DATA_SIZE];
-    uint8_t     buffer3[DISPLAY_DATA_SIZE];
+    uint8_t     display_setup[2];
+    uint8_t     display_data[DISPLAY_DATA_SIZE];
 } Disp_data;
 
 extern const uint8_t BigFonts[];
@@ -61,7 +58,7 @@ extern const int8_t tdual[];
 
 /* EXTERN Function Prototype(s) */
 void GLCD_LcdInit(void);
-void GLCD_setting(void);
+void LCD_PrepareBuffers(void);
 void GLCD_LcdOff(void);
 void GLCD_Print(const char *);
 void lcd_putsp(const char *);
@@ -70,12 +67,15 @@ void GLCD_Bigchar (char u8Char);
 void GLCD_Putchar (char);
 void putchar5x8(char u8Char);
 void printN(uint8_t Data);
+void print16_5x8(uint16_t Data);
 void printN5x8(uint8_t Data);
-void SwitchBuffer(void);
+void printN_5x8(uint8_t Data);
+void SwitchBuffers(void);
 void clr_display(void);
+void clr_display_1(void);
 void dma_display(void);
-void set_pixel(uint8_t x, uint8_t y);
-void set_pixelc(uint8_t x, uint8_t y, uint8_t c);
+void pixel(uint8_t x, uint8_t y, uint8_t c);
+void toggle_pixel(uint8_t x, uint8_t y);
 void sprite(uint8_t x, uint8_t y, const int8_t *ptr);
 void lcd_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 void lcd_hline(uint8_t x1, uint8_t x2, uint8_t y, uint8_t c);
@@ -84,13 +84,12 @@ void fillRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t c);
 void fillTriangle(uint8_t x1,uint8_t y1,uint8_t x2,uint8_t y2,uint8_t x3,uint8_t y3, uint8_t c);
 void lcd_circle(uint8_t x, uint8_t y, uint8_t radius, uint8_t c);
 void circle_fill(uint8_t x,uint8_t y, uint8_t radius, uint8_t c);
-void write_display(uint8_t data);
-void zero_display();
-void printV(int16_t Data, uint8_t gain);
+void printV(int16_t Data, uint8_t gain, uint8_t CHCtrl);
 void printF(uint8_t x, uint8_t y, int32_t Data);
 void tiny_printp(uint8_t x, uint8_t y, const char *ptr);
 void LcdInstructionWrite (unsigned char);
 void bitmap(uint8_t x, uint8_t y, const uint8_t *BMP);
 void bitmap_safe(int8_t x, int8_t y, const uint8_t *BMP, uint8_t c);
-    
+void printhex(uint8_t n);           // Prints a HEX number
+void printHEX5x8(uint8_t Data);
 #endif

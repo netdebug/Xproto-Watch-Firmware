@@ -1,104 +1,244 @@
 // Fonts
 #include <avr/pgmspace.h>
 
-const unsigned char Font5x8[][5] PROGMEM = {
-    {0x00, 0x00, 0x00, 0x00, 0x00},     // space
-    {0x00, 0x00, 0x5F, 0x00, 0x00},     // !
-    {0x00, 0x07, 0x00, 0x07, 0x00},     // "
-    {0x14, 0x7F, 0x14, 0x7F, 0x14},     // #
-    {0x24, 0x2A, 0x7F, 0x2A, 0x12},     // $
-    {0x23, 0x13, 0x08, 0x64, 0x62},     // %
-    {0x36, 0x49, 0x55, 0x22, 0x50},     // &
-    {0x00, 0x05, 0x03, 0x00, 0x00},     // '
-    {0x1C, 0x22, 0x41, 0x00, 0x00},     // (
-    {0x41, 0x22, 0x1C, 0x00, 0x00},     // )
-    {0x08, 0x2A, 0x1C, 0x2A, 0x08},     // *
-    {0x08, 0x08, 0x3E, 0x08, 0x08},     // +
-    {0xA0, 0x60, 0x00, 0x00, 0x00},     // ,
-    {0x08, 0x08, 0x08, 0x08, 0x08},     // -
-    {0x60, 0x60, 0x00, 0x00, 0x00},     // .
-    {0x20, 0x10, 0x08, 0x04, 0x02},     // /
-    {0x3E, 0x51, 0x49, 0x45, 0x3E},     // 0
-    {0x00, 0x42, 0x7F, 0x40, 0x00},     // 1
-    {0x62, 0x51, 0x49, 0x49, 0x46},     // 2
-    {0x22, 0x41, 0x49, 0x49, 0x36},     // 3
-    {0x18, 0x14, 0x12, 0x7F, 0x10},     // 4
-    {0x27, 0x45, 0x45, 0x45, 0x39},     // 5
-    {0x3C, 0x4A, 0x49, 0x49, 0x30},     // 6
-    {0x01, 0x71, 0x09, 0x05, 0x03},     // 7
-    {0x36, 0x49, 0x49, 0x49, 0x36},     // 8
-    {0x06, 0x49, 0x49, 0x29, 0x1E},     // 9
-    {0x00, 0x36, 0x36, 0x00, 0x00},     // :
-    {0x00, 0xAC, 0x6C, 0x00, 0x00},     // ;
-    {0x08, 0x14, 0x22, 0x41, 0x00},     // <
-    {0x14, 0x14, 0x14, 0x14, 0x14},     // = 
-    {0x41, 0x22, 0x14, 0x08, 0x00},     // >
-    {0x02, 0x01, 0x51, 0x09, 0x06},     // ?
-    {0x32, 0x49, 0x79, 0x41, 0x3E},     // @
-    {0x7E, 0x09, 0x09, 0x09, 0x7E},     // A
-    {0x7F, 0x49, 0x49, 0x49, 0x36},     // B
-    {0x3E, 0x41, 0x41, 0x41, 0x22},     // C
-    {0x7F, 0x41, 0x41, 0x22, 0x1C},     // D
-    {0x7F, 0x49, 0x49, 0x49, 0x41},     // E
-    {0x7F, 0x09, 0x09, 0x09, 0x01},     // F
-    {0x3E, 0x41, 0x49, 0x49, 0x7A},     // G
-    {0x7F, 0x08, 0x08, 0x08, 0x7F},     // H
-    {0x00, 0x41, 0x7F, 0x41, 0x00},     // I
-    {0x20, 0x40, 0x41, 0x3F, 0x01},     // J
-    {0x7F, 0x08, 0x14, 0x22, 0x41},     // K
-    {0x7F, 0x40, 0x40, 0x40, 0x40},     // L
-    {0x7F, 0x02, 0x0C, 0x02, 0x7F},     // M
-    {0x7F, 0x04, 0x08, 0x10, 0x7F},     // N
-    {0x3E, 0x41, 0x41, 0x41, 0x3E},     // O
-    {0x7F, 0x09, 0x09, 0x09, 0x06},     // P
-    {0x3E, 0x41, 0x51, 0x21, 0x5E},     // Q
-    {0x7F, 0x09, 0x19, 0x29, 0x46},     // R
-    {0x26, 0x49, 0x49, 0x49, 0x32},     // S
-    {0x01, 0x01, 0x7F, 0x01, 0x01},     // T
-    {0x3F, 0x40, 0x40, 0x40, 0x3F},     // U
-    {0x1F, 0x20, 0x40, 0x20, 0x1F},     // V
-    {0x3F, 0x40, 0x38, 0x40, 0x3F},     // W
-    {0x63, 0x14, 0x08, 0x14, 0x63},     // X
-    {0x03, 0x04, 0x78, 0x04, 0x03},     // Y
-    {0x61, 0x51, 0x49, 0x45, 0x43},     // Z
-    {0x7F, 0x41, 0x41, 0x00, 0x00},     // [
-    {0x02, 0x04, 0x08, 0x10, 0x20},     // /*\*/
-    {0x41, 0x41, 0x7F, 0x00, 0x00},     // ]
-    {0x04, 0x02, 0x01, 0x02, 0x04},     // ^
-    {0x80, 0x80, 0x80, 0x80, 0x80},     // _
-    {0x01, 0x02, 0x04, 0x00, 0x00},     // `
-    {0x20, 0x54, 0x54, 0x54, 0x78},     // a
-    {0x7F, 0x48, 0x44, 0x44, 0x38},     // b
-    {0x38, 0x44, 0x44, 0x44, 0x20},     // c
-    {0x38, 0x44, 0x44, 0x48, 0x7F},     // d
-    {0x38, 0x54, 0x54, 0x54, 0x18},     // e
-    {0x08, 0x7E, 0x09, 0x02, 0x00},     // f
-    {0x18, 0xA4, 0xA4, 0xA4, 0x7C},     // g
-    {0x7F, 0x08, 0x04, 0x04, 0x78},     // h
-    {0x00, 0x00, 0x7D, 0x00, 0x00},     // i
-    {0x00, 0x80, 0x84, 0x7D, 0x00},     // j
-    {0x7F, 0x10, 0x28, 0x44, 0x00},     // k
-    {0x00, 0x41, 0x7F, 0x40, 0x00},     // l
-    {0x7C, 0x04, 0x18, 0x04, 0x78},     // m
-    {0x7C, 0x08, 0x04, 0x04, 0x78},     // n
-    {0x38, 0x44, 0x44, 0x44, 0x38},     // o
-    {0xFC, 0x24, 0x24, 0x24, 0x18},     // p
-    {0x18, 0x24, 0x24, 0xFC, 0x00},     // q
-    {0x7C, 0x08, 0x04, 0x04, 0x08},     // r
-    {0x48, 0x54, 0x54, 0x54, 0x20},     // s
-    {0x00, 0x04, 0x7F, 0x44, 0x00},     // t
-    {0x3C, 0x40, 0x40, 0x20, 0x7C},     // u
-    {0x1C, 0x20, 0x40, 0x20, 0x1C},     // v
-    {0x3C, 0x40, 0x30, 0x40, 0x3C},     // w
-    {0x44, 0x28, 0x10, 0x28, 0x44},     // x
-    {0x1C, 0xA0, 0xA0, 0x7C, 0x00},     // y
-    {0x44, 0x64, 0x54, 0x4C, 0x44},     // z
-    {0x08, 0x36, 0x41, 0x00, 0x00},     // {
-    {0x00, 0x00, 0x7F, 0x00, 0x00},     // |
-    {0x41, 0x36, 0x08, 0x00, 0x00},     // }
-    {0x02, 0x01, 0x01, 0x02, 0x01},     // ~
-    {0x7F, 0x7F, 0x7F, 0x7F, 0x7F},     // DEL
+// Sprites, each byte pair represents next pixel relative position
+const int8_t tdown[] PROGMEM = { 0,0, 0,2,  1,0, 1,1,  1,2,  1,3,  2,2, 255  }; // Falling trigger
+const int8_t tup[]   PROGMEM = { 0,0, 0,-2, 1,0, 1,-1, 1,-2, 1,-3, 2,-2, 255 }; // Rising trigger
+const int8_t tdual[] PROGMEM = { 0,0, 0,-2, 1,0, 1,-1, 1,-2, 1,-3, 2,-2, 0,2,  1,0, 1,1,  1,2,  1,3,  2,2, 255 }; // Dual edge
+
+// System 3x6 (char #20 to #96) 
+const uint8_t Font3x6[] PROGMEM = {
+    0x04, 0x3E, 0x04, // Line Feed            // 0x14
+    0x04, 0x04, 0x3C, // Carriage Return      // 0x15
+    0x06, 0x18, 0x20, // long /               // 0x16
+    0x0E, 0x02, 0x0E, // u                    // 0x17
+    0x0A, 0x1E, 0x08, // 0x0A,0x0F,0x02,      // up arrow             // 0x18
+    0x50, 0x78, 0x10, // down arrow           // 0x19
+    0x00, 0x00, 0x0E, // first part of m      // 0x1A
+    0x0C, 0x08, 0x0E, // second part of m     // 0x1B
+    0x06, 0x18, 0x20, // first part of /div   // 0x1C
+    0x0A, 0x3E, 0x00, // second part of /div  // 0x1D
+    0x0C, 0x02, 0x0C, // third part of /div   // 0x1E
+    0x0E, 0x32, 0x0E, // delta                // 0x1F
+    0x00, 0x00, 0x00, // Space                // 0x20 Valid ASCII characters from here
+    0x00, 0x3A, 0x00, // !
+    0x30, 0x00, 0x30, // "
+    0x3E, 0x14, 0x3E, // #
+    0x14, 0x7E, 0x28, // $
+    0x24, 0x08, 0x12, // %
+    0x14, 0x2A, 0x16, // &
+    0x00, 0x30, 0x00, // '
+    0x1C, 0x22, 0x00, // (
+    0x22, 0x1C, 0x00, // )
+    0x1C, 0x1C, 0x1C, // *
+    0x08, 0x1C, 0x08, // +
+    0x01, 0x02, 0x00, // ,
+    0x08, 0x08, 0x08, // -
+    0x00, 0x02, 0x00, // .
+    0x04, 0x08, 0x10, // /
+    0x1C, 0x22, 0x1C, // 0    // 0x30
+    0x12, 0x3E, 0x02, // 1
+    0x26, 0x2A, 0x12, // 2
+    0x22, 0x2A, 0x14, // 3
+    0x38, 0x08, 0x3E, // 4
+    0x3A, 0x2A, 0x24, // 5
+    0x3E, 0x2A, 0x2E, // 6
+    0x20, 0x2E, 0x30, // 7
+    0x3E, 0x2A, 0x3E, // 8
+    0x3A, 0x2A, 0x3E, // 9
+    0x00, 0x14, 0x00, // :
+    0x02, 0x14, 0x00, // ;
+    0x08, 0x14, 0x22, // <
+    0x14, 0x14, 0x14, // = 
+    0x22, 0x14, 0x08, // >
+    0x20, 0x2A, 0x10, // ?
+    0x1C, 0x32, 0x3A, // @    // 0x40
+    0x1E, 0x28, 0x1E, // A
+    0x3E, 0x2A, 0x14, // B
+    0x1C, 0x22, 0x22, // C
+    0x3E, 0x22, 0x1C, // D
+    0x3E, 0x2A, 0x22, // E
+    0x3E, 0x28, 0x20, // F
+    0x1C, 0x22, 0x2C, // G
+    0x3E, 0x08, 0x3E, // H
+    0x22, 0x3E, 0x22, // I
+    0x04, 0x02, 0x3C, // J
+    0x3E, 0x08, 0x36, // K
+    0x3E, 0x02, 0x02, // L
+    0x3E, 0x10, 0x3E, // M
+    0x3E, 0x20, 0x3E, // N
+    0x3E, 0x22, 0x3E, // O
+    0x3E, 0x28, 0x10, // P    // 0x50
+    0x1C, 0x22, 0x1E, // Q
+    0x3E, 0x28, 0x16, // R
+    0x12, 0x2A, 0x24, // S
+    0x20, 0x3E, 0x20, // T
+    0x3E, 0x02, 0x3E, // U
+    0x3C, 0x02, 0x3C, // V
+    0x3E, 0x04, 0x3E, // W
+    0x36, 0x08, 0x36, // X
+    0x38, 0x06, 0x38, // Y
+    0x26, 0x2A, 0x32, // Z
+    0x00, 0x3E, 0x22, // [
+    0x10, 0x08, 0x04, // '\'
+    0x22, 0x3E, 0x00, // ]
+    0x10, 0x20, 0x10, // ^
+    0x01, 0x01, 0x01, // _
+    0x20, 0x10, 0x00, // `   // 0x60
+    0x16, 0x1A, 0x0E, // a
+    0x3E, 0x12, 0x0C, // b
+    0x0C, 0x12, 0x12, // c
+    0x0C, 0x12, 0x3E, // d
+    0x0C, 0x16, 0x1A, // e
+    0x08, 0x1E, 0x28, // f
+    0x0D, 0x15, 0x1E, // g
+    0x3E, 0x10, 0x0E, // h
+    0x00, 0x2E, 0x00, // i
+    0x01, 0x2E, 0x00, // j
+    0x3E, 0x0C, 0x12, // k
+    0x00, 0x3C, 0x02, // l
+    0x1E, 0x18, 0x1E, // m
+    0x1E, 0x10, 0x0E, // n
+    0x0C, 0x12, 0x0C, // o
+    0x1F, 0x12, 0x0C, // p
+    0x0C, 0x12, 0x1F, // q
+    0x0E, 0x10, 0x10, // r
+    0x0A, 0x1E, 0x14, // s
+    0x10, 0x3E, 0x12, // t
+    0x1E, 0x02, 0x1E, // u
+    0x1C, 0x02, 0x1C, // v
+    0x1E, 0x06, 0x1E, // w
+    0x12, 0x0C, 0x12, // x
+    0x18, 0x05, 0x1E, // y
+    0x16, 0x1E, 0x1A, // z
+    0x08, 0x36, 0x22, // {
+    0x00, 0x36, 0x00, // |
+    0x22, 0x36, 0x08, // }
+    0x10, 0x30, 0x20, // ~
+    0x3E, 0x3E, 0x3E, // DEL - full block
 };
+
+
+// Numbers
+const uint8_t BigFonts[] PROGMEM = {
+    0x1F, 0x7F, 0xFF, 0xE0, 0xC0, 0xC0, 0xE0, 0xFF, 0x7F, 0x1F, 0xF0, 0xFC, 0xFE, 0x0E, 0x06, 0x06, 0x0E, 0xFE, 0xFC, 0xF0, // 0
+    0x00, 0x08, 0x18, 0x38, 0x7F, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFE, 0xFE, 0xFE, 0x00, 0x00, 0x00, // 1
+    0x30, 0x70, 0xF0, 0xE0, 0xC0, 0xC1, 0xE3, 0xFF, 0x7F, 0x3E, 0x0E, 0x1E, 0x3E, 0x7E, 0xF6, 0xE6, 0xC6, 0x86, 0x06, 0x06, // 2
+    0x30, 0x70, 0xF0, 0xE3, 0xC3, 0xE7, 0xFF, 0x7F, 0x3D, 0x00, 0x18, 0x1C, 0x1E, 0x0E, 0x06, 0x06, 0x8E, 0xFE, 0xFC, 0xF8, // 3
+    0x00, 0x01, 0x03, 0x0F, 0x1E, 0x78, 0xFF, 0xFF, 0xFF, 0x00, 0x70, 0xF0, 0xF0, 0xB0, 0x30, 0x30, 0xFE, 0xFE, 0xFE, 0x30, // 4
+    0x0F, 0xFF, 0xFF, 0xFE, 0xC6, 0xC6, 0xC7, 0xC7, 0xC3, 0xC1, 0x30, 0x3C, 0x3E, 0x0E, 0x06, 0x06, 0x0E, 0xFE, 0xFC, 0xF8, // 5
+    0x1F, 0x7F, 0xFF, 0xE3, 0xC3, 0xC3, 0xE3, 0xF3, 0x71, 0x30, 0xF0, 0xFC, 0xFE, 0x8E, 0x06, 0x06, 0x8E, 0xFE, 0xFC, 0xF8, // 6
+    0xC0, 0xC0, 0xC0, 0xC1, 0xC7, 0xDF, 0xFE, 0xF8, 0xE0, 0xC0, 0x00, 0x00, 0x3E, 0xFE, 0xFE, 0xC0, 0x00, 0x00, 0x00, 0x00, // 7
+    0x38, 0x7C, 0xFF, 0xE7, 0xC3, 0xC3, 0xE7, 0xFF, 0x7C, 0x38, 0x78, 0xFC, 0xFE, 0xCE, 0x86, 0x86, 0xCE, 0xFE, 0xFC, 0x78, // 8
+    0x3E, 0x7F, 0xFF, 0xE3, 0xC1, 0xC1, 0xE3, 0xFF, 0x7F, 0x1F, 0x18, 0x1C, 0x9E, 0x8E, 0x86, 0x86, 0x8E, 0xFE, 0xFC, 0xF0, // 9
+};
+
+const unsigned char Font5x8[] PROGMEM = {
+    0x00, 0x00, 0x00, 0x00, 0x00,     // space
+    0x00, 0x00, 0xFA, 0x00, 0x00,     // !
+    0x00, 0xE0, 0x00, 0xE0, 0x00,     // "
+    0x28, 0xFE, 0x28, 0xFE, 0x28,     // #
+    0x24, 0x54, 0xFE, 0x54, 0x48,     // $
+    0xC4, 0xC8, 0x10, 0x26, 0x46,     // %
+    0x6C, 0x92, 0xAA, 0x44, 0x0A,     // &
+    0x00, 0xA0, 0xC0, 0x00, 0x00,     // '
+    0x38, 0x44, 0x82, 0x00, 0x00,     // (
+    0x82, 0x44, 0x38, 0x00, 0x00,     // )
+    0x10, 0x54, 0x38, 0x54, 0x10,     // *
+    0x10, 0x10, 0x7C, 0x10, 0x10,     // +
+    0x05, 0x06, 0x00, 0x00, 0x00,     // ,
+    0x10, 0x10, 0x10, 0x10, 0x10,     // -
+    0x06, 0x06, 0x00, 0x00, 0x00,     // .
+    0x04, 0x08, 0x10, 0x20, 0x40,     // /
+    0x7C, 0x8A, 0x92, 0xA2, 0x7C,     // 0
+    0x00, 0x42, 0xFE, 0x02, 0x00,     // 1
+    0x46, 0x8A, 0x92, 0x92, 0x62,     // 2
+    0x44, 0x82, 0x92, 0x92, 0x6C,     // 3
+    0x18, 0x28, 0x48, 0xFE, 0x08,     // 4
+    0xE4, 0xA2, 0xA2, 0xA2, 0x9C,     // 5
+    0x3C, 0x52, 0x92, 0x92, 0x0C,     // 6
+    0x80, 0x8E, 0x90, 0xA0, 0xC0,     // 7
+    0x6C, 0x92, 0x92, 0x92, 0x6C,     // 8
+    0x60, 0x92, 0x92, 0x94, 0x78,     // 9
+    0x00, 0x6C, 0x6C, 0x00, 0x00,     // :
+    0x00, 0x35, 0x36, 0x00, 0x00,     // ;
+    0x10, 0x28, 0x44, 0x82, 0x00,     // <
+    0x28, 0x28, 0x28, 0x28, 0x28,     // = 
+    0x82, 0x44, 0x28, 0x10, 0x00,     // >
+    0x40, 0x80, 0x8A, 0x90, 0x60,     // ?
+    0x4C, 0x92, 0x9E, 0x82, 0x7C,     // @
+    0x7E, 0x90, 0x90, 0x90, 0x7E,     // A
+    0xFE, 0x92, 0x92, 0x92, 0x6C,     // B
+    0x7C, 0x82, 0x82, 0x82, 0x44,     // C
+    0xFE, 0x82, 0x82, 0x44, 0x38,     // D
+    0xFE, 0x92, 0x92, 0x92, 0x82,     // E
+    0xFE, 0x90, 0x90, 0x90, 0x80,     // F
+    0x7C, 0x82, 0x92, 0x92, 0x5E,     // G
+    0xFE, 0x10, 0x10, 0x10, 0xFE,     // H
+    0x00, 0x82, 0xFE, 0x82, 0x00,     // I
+    0x04, 0x02, 0x82, 0xFC, 0x80,     // J
+    0xFE, 0x10, 0x28, 0x44, 0x82,     // K
+    0xFE, 0x02, 0x02, 0x02, 0x02,     // L
+    0xFE, 0x40, 0x30, 0x40, 0xFE,     // M
+    0xFE, 0x20, 0x10, 0x08, 0xFE,     // N
+    0x7C, 0x82, 0x82, 0x82, 0x7C,     // O
+    0xFE, 0x90, 0x90, 0x90, 0x60,     // P
+    0x7C, 0x82, 0x8A, 0x84, 0x7A,     // Q
+    0xFE, 0x90, 0x98, 0x94, 0x62,     // R
+    0x64, 0x92, 0x92, 0x92, 0x4C,     // S
+    0x80, 0x80, 0xFE, 0x80, 0x80,     // T
+    0xFC, 0x02, 0x02, 0x02, 0xFC,     // U
+    0xF8, 0x04, 0x02, 0x04, 0xF8,     // V
+    0xFC, 0x02, 0x1C, 0x02, 0xFC,     // W
+    0xC6, 0x28, 0x10, 0x28, 0xC6,     // X
+    0xC0, 0x20, 0x1E, 0x20, 0xC0,     // Y
+    0x86, 0x8A, 0x92, 0xA2, 0xC2,     // Z
+    0xFE, 0x82, 0x82, 0x00, 0x00,     // [
+    0x40, 0x20, 0x10, 0x08, 0x04,     // /*\*/
+    0x82, 0x82, 0xFE, 0x00, 0x00,     // ]
+    0x20, 0x40, 0x80, 0x40, 0x20,     // ^
+    0x01, 0x01, 0x01, 0x01, 0x01,     // _
+    0x80, 0x40, 0x20, 0x00, 0x00,     // `
+    0x04, 0x2A, 0x2A, 0x2A, 0x1E,     // a
+    0xFE, 0x12, 0x22, 0x22, 0x1C,     // b
+    0x1C, 0x22, 0x22, 0x22, 0x04,     // c
+    0x1C, 0x22, 0x22, 0x12, 0xFE,     // d
+    0x1C, 0x2A, 0x2A, 0x2A, 0x18,     // e
+    0x10, 0x7E, 0x90, 0x40, 0x00,     // f
+    0x18, 0x25, 0x25, 0x25, 0x3E,     // g
+    0xFE, 0x10, 0x20, 0x20, 0x1E,     // h
+    0x00, 0x00, 0xBE, 0x00, 0x00,     // i
+    0x00, 0x01, 0x21, 0xBE, 0x00,     // j
+    0xFE, 0x08, 0x14, 0x22, 0x00,     // k
+    0x00, 0x82, 0xFE, 0x02, 0x00,     // l
+    0x3E, 0x20, 0x18, 0x20, 0x1E,     // m
+    0x3E, 0x10, 0x20, 0x20, 0x1E,     // n
+    0x1C, 0x22, 0x22, 0x22, 0x1C,     // o
+    0x3F, 0x24, 0x24, 0x24, 0x18,     // p
+    0x18, 0x24, 0x24, 0x3F, 0x00,     // q
+    0x3E, 0x10, 0x20, 0x20, 0x10,     // r
+    0x12, 0x2A, 0x2A, 0x2A, 0x04,     // s
+    0x00, 0x20, 0xFE, 0x22, 0x00,     // t
+    0x3C, 0x02, 0x02, 0x04, 0x3E,     // u
+    0x38, 0x04, 0x02, 0x04, 0x38,     // v
+    0x3C, 0x02, 0x0C, 0x02, 0x3C,     // w
+    0x22, 0x14, 0x08, 0x14, 0x22,     // x
+    0x38, 0x05, 0x05, 0x3E, 0x00,     // y
+    0x22, 0x26, 0x2A, 0x32, 0x22,     // z
+    0x10, 0x6C, 0x82, 0x00, 0x00,     // 
+    0x00, 0x00, 0xFE, 0x00, 0x00,     // |
+    0x82, 0x6C, 0x10, 0x00, 0x00,     // 
+    0x40, 0x80, 0x80, 0x40, 0x80,     // ~
+    0xFE, 0xFE, 0xFE, 0xFE, 0xFE,     // DEL
+};
+
+// Bitmaps generated with the Gabotronics Image to HEX converter using:
+// Data Orientation: Vertical
+// Scan Direction: Up to Down
+// Byte Order: LSB First
+// Include Size
+// Compress
+// AVR Progmem
 
 const unsigned char DIGI0[] PROGMEM = { 22, 40,
     '\x3f','\xff','\xc7','\xff','\xfc','\x3f','\xff','\xef', // 0x0008
@@ -369,101 +509,96 @@ const uint16_t sDIGITS[] PROGMEM = {
     (uint16_t)&sDIGI9,
 };
 
-const unsigned char mDIGI0[] PROGMEM = { 14, 24,
+const unsigned char mDIGI0[] PROGMEM = { 12, 24,
     '\x7f','\xf7','\xfe','\xbf','\xf7','\xfd','\xdf','\xe3', // 0x0008
     '\xfb','\xe0','\x00','\x07','\xe0','\x00','\x07','\xe0', // 0x0010
     '\x00','\x07','\xe0','\x00','\x07','\xe0','\x00','\x07', // 0x0018
-    '\xe0','\x00','\x07','\xe0','\x00','\x07','\xe0','\x00', // 0x0020
-    '\x07','\xdf','\xe3','\xfb','\xbf','\xf7','\xfd','\x7f', // 0x0028
-    '\xf7','\xfe',
+    '\xe0','\x00','\x07','\xdf','\xe3','\xfb','\xbf','\xf7', // 0x0020
+    '\xfd','\x7f','\xf7','\xfe',
 };
 
-const unsigned char mDIGI1[] PROGMEM = { 14, 24,
-    '\x00','\x00','\x21','\x1f','\xe3','\xf8','\x3f','\xf7', // 0x0008
+const unsigned char mDIGI1[] PROGMEM = { 12, 24,
+    '\x00','\x00','\x1b','\x1f','\xe3','\xf8','\x3f','\xf7', // 0x0008
     '\xfc','\x7f','\xf7','\xfe',
 };
 
-const unsigned char mDIGI2[] PROGMEM = { 14, 24,
+const unsigned char mDIGI1b[] PROGMEM = { 3, 24,    // narrow '1'
+    '\x1f','\xe3','\xf8','\x3f','\xf7','\xfc','\x7f','\xf7', // 0x0008
+    '\xfe',
+};
+
+const unsigned char mDIGI2[] PROGMEM = { 12, 24,
     '\x00','\x07','\xfe','\x80','\x07','\xfd','\xc0','\x0b', // 0x0008
     '\xfb','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
     '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xdf','\xe8','\x03','\xbf','\xf0','\x01','\x7f', // 0x0028
-    '\xf0','\x00','\x00',
+    '\xe0','\x1c','\x07','\xdf','\xe8','\x03','\xbf','\xf0', // 0x0020
+    '\x01','\x7f','\xf0','\x00','\x00',
 };
 
-const unsigned char mDIGI3[] PROGMEM = { 14, 24,
+const unsigned char mDIGI3[] PROGMEM = { 12, 24,
     '\x00','\x00','\x03','\x80','\x00','\x01','\xc0','\x08', // 0x0008
     '\x03','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
     '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xdf','\xeb','\xfb','\xbf','\xf7','\xfd','\x7f', // 0x0028
-    '\xf7','\xfe',
+    '\xe0','\x1c','\x07','\xdf','\xeb','\xfb','\xbf','\xf7', // 0x0020
+    '\xfd','\x7f','\xf7','\xfe',
 };
 
-const unsigned char mDIGI4[] PROGMEM = { 14, 24,
+const unsigned char mDIGI4[] PROGMEM = { 12, 24,
     '\x7f','\xf0','\x00','\x3f','\xf0','\x00','\x1f','\xe8', // 0x0008
     '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0010
     '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0018
     '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0020
-    '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0028
-    '\x00','\x1f','\xeb','\xf8','\x3f','\xf7','\xfc','\x7f', // 0x0030
+    '\x00','\x1f','\xeb','\xf8','\x3f','\xf7','\xfc','\x7f', // 0x0028
     '\xf7','\xfe',
 };
 
-const unsigned char mDIGI5[] PROGMEM = { 14, 24,
+const unsigned char mDIGI5[] PROGMEM = { 12, 24,
     '\x7f','\xf0','\x00','\xbf','\xf0','\x01','\xdf','\xe8', // 0x0008
     '\x03','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
     '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xc0','\x0b','\xfb','\x80','\x07','\xfd','\x00', // 0x0028
-    '\x07','\xfe',
+    '\xe0','\x1c','\x07','\xc0','\x0b','\xfb','\x80','\x07', // 0x0020
+    '\xfd','\x00','\x07','\xfe',
 };
 
-const unsigned char mDIGI6[] PROGMEM = { 14, 24,
+const unsigned char mDIGI6[] PROGMEM = { 12, 24,
     '\x7f','\xf7','\xfe','\xbf','\xf7','\xfd','\xdf','\xeb', // 0x0008
     '\xfb','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
     '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xc0','\x0b','\xfb','\x80','\x07','\xfd','\x00', // 0x0028
-    '\x07','\xfe',
+    '\xe0','\x1c','\x07','\xc0','\x0b','\xfb','\x80','\x07', // 0x0020
+    '\xfd','\x00','\x07','\xfe',
 };
 
-const unsigned char mDIGI7[] PROGMEM = { 14, 24,
+const unsigned char mDIGI7[] PROGMEM = { 12, 24,
     '\x00','\x00','\x03','\x80','\x00','\x00','\x02','\xc0', // 0x0008
     '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0010
     '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0018
     '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0020
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0028
-    '\x00','\x00','\x02','\xdf','\xe3','\xf8','\xbf','\xf7', // 0x0030
+    '\x00','\x00','\x02','\xdf','\xe3','\xf8','\xbf','\xf7', // 0x0028
     '\xfc','\x7f','\xf7','\xfe',
 };
 
-const unsigned char mDIGI8[] PROGMEM = { 14, 24,
+const unsigned char mDIGI8[] PROGMEM = { 12, 24,
     '\x7f','\xf7','\xfe','\xbf','\xf7','\xfd','\xdf','\xeb', // 0x0008
     '\xfb','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
     '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xdf','\xeb','\xfb','\xbf','\xf7','\xfd','\x7f', // 0x0028
-    '\xf7','\xfe',
+    '\xe0','\x1c','\x07','\xdf','\xeb','\xfb','\xbf','\xf7', // 0x0020
+    '\xfd','\x7f','\xf7','\xfe',
 };
 
-const unsigned char mDIGI9[] PROGMEM = { 14, 24,
+const unsigned char mDIGI9[] PROGMEM = { 12, 24,
     '\x7f','\xf0','\x00','\xbf','\xf0','\x01','\xdf','\xe8', // 0x0008
     '\x03','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
     '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xdf','\xeb','\xfb','\xbf','\xf7','\xfd','\x7f', // 0x0028
-    '\xf7','\xfe',
+    '\xe0','\x1c','\x07','\xdf','\xeb','\xfb','\xbf','\xf7', // 0x0020
+    '\xfd','\x7f','\xf7','\xfe',
 };
 
-const unsigned char mDIGIdash[] PROGMEM = { 14, 24,
-    '\x00','\x00','\x07','\x08','\x00','\x00','\x02','\x1c', // 0x0008
+const unsigned char mDIGIdash[] PROGMEM = { 10, 24,
+    '\x00','\x00','\x04','\x08','\x00','\x00','\x02','\x1c', // 0x0008
     '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0010
     '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0018
-    '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0020
-    '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x08', // 0x0028
-    '\x00','\x00','\x07',
+    '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x08', // 0x0020
+    '\x00','\x00','\x04',
 };
 
 const uint16_t mDIGITS[] PROGMEM = {
@@ -480,162 +615,6 @@ const uint16_t mDIGITS[] PROGMEM = {
     (uint16_t)&mDIGIdash,    
 };
 
-const unsigned char mDIGI_MON[] PROGMEM = { 47, 24,
-    '\x7f','\xf7','\xfe','\xbf','\xf7','\xfc','\xdf','\xe3', // 0x0008
-    '\xf8','\xe0','\x00','\x00','\x02','\xe0','\x00','\x00', // 0x0010
-    '\x02','\xe0','\x00','\x00','\x02','\xe7','\xe7','\x02', // 0x0018
-    '\xf8','\xef','\xe7','\xfc','\xef','\xe7','\xfc','\xe0', // 0x0020
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0028
-    '\x00','\x00','\x02','\xdf','\xe3','\xf8','\xbf','\xf7', // 0x0030
-    '\xfc','\x7f','\xf7','\xfe','\x00','\x00','\x06','\x7f', // 0x0038
-    '\xf7','\xfe','\xbf','\xf7','\xfd','\xdf','\xe3','\xfb', // 0x0040
-    '\xe0','\x00','\x07','\xe0','\x00','\x07','\xe0','\x00', // 0x0048
-    '\x07','\xe0','\x00','\x07','\xe0','\x00','\x07','\xe0', // 0x0050
-    '\x00','\x07','\xe0','\x00','\x07','\xe0','\x00','\x07', // 0x0058
-    '\xdf','\xe3','\xfb','\xbf','\xf7','\xfd','\x7f','\xf7', // 0x0060
-    '\xfe','\x00','\x00','\x06','\x7f','\xf7','\xfe','\xbf', // 0x0068
-    '\xf7','\xfc','\xdf','\xe3','\xf8','\xe0','\x00','\x00', // 0x0070
-    '\x02','\xe0','\x00','\x00','\x02','\xe0','\x00','\x00', // 0x0078
-    '\x02','\xe0','\x00','\x00','\x02','\xe0','\x00','\x00', // 0x0080
-    '\x02','\xe0','\x00','\x00','\x02','\xe0','\x00','\x00', // 0x0088
-    '\x02','\xe0','\x00','\x00','\x02','\xdf','\xe3','\xf8', // 0x0090
-    '\xbf','\xf7','\xfc','\x7f','\xf7','\xfe',
-};
-
-const unsigned char mDIGI_TUE[] PROGMEM = { 47, 24,
-    '\x00','\x00','\x03','\x80','\x00','\x00','\x02','\xc0', // 0x0008
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0010
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe7', // 0x0018
-    '\xe7','\x02','\xf8','\xef','\xe7','\xfc','\xef','\xe7', // 0x0020
-    '\xfc','\xe0','\x00','\x00','\x02','\xe0','\x00','\x00', // 0x0028
-    '\x02','\xe0','\x00','\x00','\x02','\xc0','\x00','\x00', // 0x0030
-    '\x02','\x80','\x00','\x00','\x0b','\x7f','\xf7','\xfe', // 0x0038
-    '\x3f','\xf7','\xfd','\x1f','\xe3','\xfb','\x00','\x00', // 0x0040
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0048
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0050
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0058
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x1f','\xe3', // 0x0060
-    '\xfb','\x3f','\xf7','\xfd','\x7f','\xf7','\xfe','\x00', // 0x0068
-    '\x00','\x06','\x7f','\xf7','\xfe','\xbf','\xf7','\xfd', // 0x0070
-    '\xdf','\xeb','\xfb','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0078
-    '\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0080
-    '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0088
-    '\xe0','\x1c','\x07','\xc0','\x08','\x03','\x80','\x00', // 0x0090
-    '\x01','\x00','\x00','\x03',
-};
-
-const unsigned char mDIGI_WED[] PROGMEM = { 47, 24,
-    '\xff','\xff','\x06','\x7f','\xef','\xff','\x3f','\xc0', // 0x0008
-    '\x0f','\x00','\x00','\x02','\x0f','\x00','\x0f','\xff', // 0x0010
-    '\x7f','\xef','\xff','\x7f','\xe7','\xf7','\x3f','\xf7', // 0x0018
-    '\xf7','\x02','\x1f','\xe0','\x07','\x00','\x00','\x02', // 0x0020
-    '\x07','\x00','\x07','\xff','\x1f','\xef','\xff','\x3f', // 0x0028
-    '\xff','\xff','\x02','\x7f','\xff','\xff','\x02','\x00', // 0x0030
-    '\x00','\x06','\x7f','\xf7','\xfe','\xbf','\xf7','\xfd', // 0x0038
-    '\xdf','\xeb','\xfb','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0040
-    '\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0048
-    '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0050
-    '\xe0','\x1c','\x07','\xc0','\x08','\x03','\x80','\x00', // 0x0058
-    '\x01','\x00','\x00','\x0a','\x07','\xfe','\x00','\x07', // 0x0060
-    '\xfd','\x00','\x0b','\xfb','\x00','\x1c','\x07','\x00', // 0x0068
-    '\x1c','\x07','\x00','\x1c','\x07','\x00','\x1c','\x07', // 0x0070
-    '\x00','\x1c','\x07','\x00','\x1c','\x07','\x00','\x1c', // 0x0078
-    '\x07','\x00','\x1c','\x07','\x1f','\xeb','\xfb','\x3f', // 0x0080
-    '\xf7','\xfd','\x7f','\xf7','\xfe',
-};
-
-const unsigned char mDIGI_THU[] PROGMEM = { 47, 24,
-    '\x00','\x00','\x03','\x80','\x00','\x00','\x02','\xc0', // 0x0008
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0010
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe7', // 0x0018
-    '\xe7','\x02','\xf8','\xef','\xe7','\xfc','\xef','\xe7', // 0x0020
-    '\xfc','\xe0','\x00','\x00','\x02','\xe0','\x00','\x00', // 0x0028
-    '\x02','\xe0','\x00','\x00','\x02','\xc0','\x00','\x00', // 0x0030
-    '\x02','\x80','\x00','\x00','\x0b','\x7f','\xf7','\xfe', // 0x0038
-    '\x3f','\xf7','\xfc','\x1f','\xeb','\xf8','\x00','\x1c', // 0x0040
-    '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0048
-    '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0050
-    '\x00','\x00','\x02','\x1c','\x00','\x00','\x02','\x1c', // 0x0058
-    '\x00','\x00','\x02','\x1c','\x00','\x1f','\xeb','\xf8', // 0x0060
-    '\x3f','\xf7','\xfc','\x7f','\xf7','\xfe','\x00','\x00', // 0x0068
-    '\x06','\x7f','\xf7','\xfe','\x3f','\xf7','\xfd','\x1f', // 0x0070
-    '\xe3','\xfb','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0078
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0080
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0088
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0090
-    '\x02','\x07','\x1f','\xe3','\xfb','\x3f','\xf7','\xfd', // 0x0098
-    '\x7f','\xf7','\xfe',
-};
-
-const unsigned char mDIGI_FRI[] PROGMEM = { 47, 24,
-    '\x7f','\xf7','\xfe','\xbf','\xf7','\xfc','\xdf','\xeb', // 0x0008
-    '\xf8','\xe0','\x1c','\x00','\xe0','\x1c','\x00','\xe0', // 0x0010
-    '\x1c','\x00','\xe0','\x1c','\x00','\xe0','\x1c','\x00', // 0x0018
-    '\xe0','\x1c','\x00','\xe0','\x1c','\x00','\xe0','\x1c', // 0x0020
-    '\x00','\xe0','\x08','\x00','\xc0','\x00','\x00','\x02', // 0x0028
-    '\x80','\x00','\x00','\x0b','\x7f','\xf7','\xfe','\xbf', // 0x0030
-    '\xf7','\xfc','\xdf','\xeb','\xf8','\xe0','\x1c','\x00', // 0x0038
-    '\xe0','\x1c','\x00','\xe0','\x1c','\x00','\xe0','\x1c', // 0x0040
-    '\x00','\xe0','\x1c','\x80','\xe0','\x1d','\xfc','\xe0', // 0x0048
-    '\x1d','\xfc','\xe0','\x1c','\xfc','\xdf','\xe8','\x00', // 0x0050
-    '\xbf','\xf0','\x00','\x7f','\xf0','\x00','\x00','\x07', // 0x0058
-    '\x7f','\xf7','\xfe','\x3f','\xf7','\xfc','\x1f','\xe3', // 0x0060
-    '\xf8','\x00','\x00','\x21',
-};
-
-const unsigned char mDIGI_SAT[] PROGMEM = { 47, 24,
-    '\x7f','\xf0','\x00','\xbf','\xf0','\x01','\xdf','\xe8', // 0x0008
-    '\x03','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
-    '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xc0','\x0b','\xfb','\x80','\x07','\xfd','\x00', // 0x0028
-    '\x07','\xfe','\x00','\x00','\x06','\x7f','\xf7','\xfe', // 0x0030
-    '\xbf','\xf7','\xfc','\xdf','\xeb','\xf8','\xe0','\x1c', // 0x0038
-    '\x00','\xe0','\x1c','\x00','\xe0','\x1c','\x00','\xe0', // 0x0040
-    '\x1c','\x00','\xe0','\x1c','\x00','\xe0','\x1c','\x00', // 0x0048
-    '\xe0','\x1c','\x00','\xe0','\x1c','\x00','\xdf','\xeb', // 0x0050
-    '\xf8','\xbf','\xf7','\xfc','\x7f','\xf7','\xfe','\x00', // 0x0058
-    '\x00','\x06','\x80','\x00','\x00','\x02','\xc0','\x00', // 0x0060
-    '\x00','\x02','\xe0','\x00','\x00','\x02','\xe0','\x00', // 0x0068
-    '\x00','\x02','\xe0','\x00','\x00','\x02','\xe7','\xe7', // 0x0070
-    '\x02','\xf8','\xef','\xe7','\xfc','\xef','\xe7','\xfc', // 0x0078
-    '\xe0','\x00','\x00','\x02','\xe0','\x00','\x00','\x02', // 0x0080
-    '\xe0','\x00','\x00','\x02','\xc0','\x00','\x00','\x02', // 0x0088
-    '\x80','\x00','\x00','\x08',
-};
-
-const unsigned char mDIGI_SUN[] PROGMEM = { 47, 24,
-    '\x7f','\xf0','\x00','\xbf','\xf0','\x01','\xdf','\xe8', // 0x0008
-    '\x03','\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0', // 0x0010
-    '\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c','\x07', // 0x0018
-    '\xe0','\x1c','\x07','\xe0','\x1c','\x07','\xe0','\x1c', // 0x0020
-    '\x07','\xc0','\x0b','\xfb','\x80','\x07','\xfd','\x00', // 0x0028
-    '\x07','\xfe','\x00','\x00','\x06','\x7f','\xf7','\xfe', // 0x0030
-    '\x3f','\xf7','\xfd','\x1f','\xe3','\xfb','\x00','\x00', // 0x0038
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0040
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0048
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x00','\x00', // 0x0050
-    '\x02','\x07','\x00','\x00','\x02','\x07','\x1f','\xe3', // 0x0058
-    '\xfb','\x3f','\xf7','\xfd','\x7f','\xf7','\xfe','\x00', // 0x0060
-    '\x00','\x06','\x7f','\xf7','\xfe','\xbf','\xf7','\xfc', // 0x0068
-    '\xdf','\xe3','\xf8','\xe0','\x00','\x00','\x02','\xe0', // 0x0070
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0078
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0080
-    '\x00','\x00','\x02','\xe0','\x00','\x00','\x02','\xe0', // 0x0088
-    '\x00','\x00','\x02','\xdf','\xe3','\xf8','\xbf','\xf7', // 0x0090
-    '\xfc','\x7f','\xf7','\xfe','\x00','\x00','\x03',
-};
-
-const uint16_t mWEEK[] PROGMEM = {
-    (uint16_t)&mDIGI_SAT,
-    (uint16_t)&mDIGI_SUN,
-    (uint16_t)&mDIGI_MON,
-    (uint16_t)&mDIGI_TUE,
-    (uint16_t)&mDIGI_WED,
-    (uint16_t)&mDIGI_THU,
-    (uint16_t)&mDIGI_FRI,
-};
-
 const unsigned char PM[] PROGMEM = { 7, 8,
     '\xff','\xff','\x02','\xcc','\xcc','\x03','\xfc','\x78', // 0x0008
 };
@@ -650,7 +629,7 @@ const unsigned char BELL[] PROGMEM = { 8, 8,
 };
 
 const unsigned char BATTERY[] PROGMEM = { 16, 8,
-    '\xff','\x81','\xbd','\xbd','\x0b','\x81','\xff','\x18', // 0x0008
+    '\xff','\x81','\x81','\x0d','\xff','\x18',
 };
 
 const unsigned char WATCH_ICON[] PROGMEM = { 96, 64,
@@ -1205,77 +1184,77 @@ const uint16_t Icons[] PROGMEM = {
     (uint16_t)&SETTINGS_ICON,
 };
 
-const unsigned char pawn1[] PROGMEM = { 13, 16,
+const unsigned char pawn1[] PROGMEM = { 13, 16,     // White background
     '\x00','\x00','\x07','\x0c','\x06','\x94','\x09','\x64', // 0x0008
     '\x08','\x04','\x09','\x64','\x06','\x94','\x00','\x0c', // 0x0010
     '\x00','\x00','\x06',
 };
 
-const unsigned char pawn2[] PROGMEM = { 13, 16,
+const unsigned char pawn2[] PROGMEM = { 13, 16,     // Black background
     '\xff','\xff','\x09','\xf7','\xf9','\x67','\xf8','\x07', // 0x0008
     '\xf9','\x67','\xff','\xf7','\xff','\xff','\x08',
 };
 
-const unsigned char night1[] PROGMEM = { 13, 16,
+const unsigned char night1[] PROGMEM = { 13, 16,    // White background
     '\x00','\x00','\x02','\x01','\xc0','\x06','\x20','\x18', // 0x0008
     '\x20','\x24','\x40','\x10','\x5c','\x20','\xe4','\x10', // 0x0010
     '\x04','\x10','\x04','\x08','\x04','\x06','\x04','\x01', // 0x0018
     '\xfc','\x00','\x00','\x02',
 };
 
-const unsigned char night2[] PROGMEM = { 13, 16,
+const unsigned char night2[] PROGMEM = { 13, 16,    // Black background
     '\xff','\xff','\x04','\xfe','\x3f','\xf8','\x3f','\xe4', // 0x0008
     '\x7f','\xf0','\x7f','\xe0','\xe7','\xf0','\x07','\xf0', // 0x0010
     '\x07','\xf8','\x07','\xfe','\x07','\xff','\xff','\x04', // 0x0018
 };
 
-const unsigned char king1[] PROGMEM = { 13, 16,    // on white
+const unsigned char king1[] PROGMEM = { 13, 16,     // White background
     '\x03','\xc0','\x06','\x60','\x04','\x30','\x04','\x1c', // 0x0008
     '\x3c','\x14','\x6e','\x14','\x51','\xd4','\x6e','\x14', // 0x0010
     '\x3c','\x14','\x04','\x1c','\x04','\x30','\x06','\x60', // 0x0018
     '\x03','\xc0',
 };
 
-const unsigned char king2[] PROGMEM = { 13, 16,    // on black
+const unsigned char king2[] PROGMEM = { 13, 16,    // Black background
     '\xff','\xff','\x02','\xfe','\x7f','\xfc','\x3f','\xfc', // 0x0008
     '\x1f','\xfc','\x17','\xee','\x17','\xd1','\xd7','\xee', // 0x0010
     '\x17','\xfc','\x17','\xfc','\x1f','\xfc','\x3f','\xfe', // 0x0018
     '\x7f','\xff','\xff','\x02',
 };
 
-const unsigned char bishop1[] PROGMEM = { 13, 16,
+const unsigned char bishop1[] PROGMEM = { 13, 16,   // White background
     '\x00','\x00','\x03','\x0c','\x00','\x1c','\x07','\x14', // 0x0008
     '\x08','\xe4','\x34','\x44','\x4e','\x44','\x34','\x44', // 0x0010
     '\x08','\xe4','\x07','\x14','\x00','\x1c','\x00','\x0c', // 0x0018
     '\x00','\x00','\x02',
 };
 
-const unsigned char bishop2[] PROGMEM = { 13, 16,
+const unsigned char bishop2[] PROGMEM = { 13, 16,   // Black background
     '\xff','\xff','\x07','\xf7','\xf8','\xe7','\xf4','\x47', // 0x0008
     '\xce','\x47','\xf4','\x47','\xf8','\xe7','\xff','\xf7', // 0x0010
     '\xff','\xff','\x06',
 };
 
-const unsigned char rook1[] PROGMEM = { 13, 16,
+const unsigned char rook1[] PROGMEM = { 13, 16,     // White background
     '\x00','\x00','\x05','\x0c','\x1e','\x14','\x13','\xe4', // 0x0008
     '\x0a','\x04','\x12','\x04','\x0a','\x04','\x13','\xe4', // 0x0010
     '\x1e','\x14','\x00','\x0c','\x00','\x00','\x04',
 };
 
-const unsigned char rook2[] PROGMEM = { 13, 16,
+const unsigned char rook2[] PROGMEM = { 13, 16,     // Black background
     '\xff','\xff','\x07','\xf7','\xf3','\xe7','\xfa','\x07', // 0x0008
     '\xf2','\x07','\xfa','\x07','\xf3','\xe7','\xff','\xf7', // 0x0010
     '\xff','\xff','\x06',
 };
 
-const unsigned char queen1[] PROGMEM = { 13, 16,
+const unsigned char queen1[] PROGMEM = { 13, 16,    // White background
     '\x00','\x00','\x02','\x08','\x00','\x16','\x1c','\x09', // 0x0008
     '\xf4','\x04','\x14','\x2e','\x14','\x50','\x14','\x2e', // 0x0010
     '\x14','\x04','\x14','\x09','\xf4','\x16','\x1c','\x08', // 0x0018
     '\x00','\x00','\x03',
 };
 
-const unsigned char queen2[] PROGMEM = { 13, 16,
+const unsigned char queen2[] PROGMEM = { 13, 16,    // Black background
     '\xff','\xff','\x04','\xf7','\xff','\xf9','\xf7','\xfc', // 0x0008
     '\x17','\xfe','\x17','\xd0','\x17','\xfe','\x17','\xfc', // 0x0010
     '\x17','\xf9','\xf7','\xf7','\x02','\xff','\xff','\x05', // 0x0018

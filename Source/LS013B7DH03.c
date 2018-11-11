@@ -1,17 +1,10 @@
 /* ----------------------------------------------------------------------------
-	128x64 Graphic LCD management for SSD1306 driver
+	Driver for the LS013B7DH03.c Memory LCD
 
-	FILE NAME 	: SSD1306.c
-	LAYER		: Application
-	
-	DESCRIPTION	: The purpose of this function is to manage a graphic LCD
-			  by providing function for control and display text and 
-			  graphic 
-			  
-	AUTHOR		: Gabriel Anzziani
+	Gabriel Anzziani
     www.gabotronics.com
 
- */
+-----------------------------------------------------------------------------*/
  
 /******************************************************************************
 /                       DECLARATIONS / DEFINITIONS                            /
@@ -24,6 +17,7 @@
 #include "display.h"
 #include "mygccdef.h"
 #include "hardware.h"
+#include "main.h"
 
 /* Local functions prototypes */
 void LcdDataWrite (unsigned char);
@@ -48,27 +42,33 @@ void GLCD_LcdInit(void)	{
     //clrbit(LCD_CTRL, LCD_DISP);         // DISP OFF
     LcdInstructionWrite(CLEAR_ALL);     // Clear Screen
     setbit(LCD_CTRL, LCD_DISP);         // DISP ON
+	LCD_PrepareBuffers();
+}
 
-    // Writing Multiple Lines to LCD:
-    // First Byte:  Command
-    // Lines:       Line Number, Data (16 bytes), Trailer
-    // Last Byte:   Trailer
-    Disp_send.display_setup1[0] = DYNAMIC_MODE;  // Command
-    Disp_send.display_setup1[1] = 128;           // Address of line 1
-    Disp_send.display_setup2[0] = DYNAMIC_MODE;  // Command
-    Disp_send.display_setup2[1] = 128;           // Address of line 1
+// Prepare buffers for future writes
+// Writing Multiple Lines to LCD:
+// First Byte:  Command
+// Lines:       Line Number, Data (16 bytes), Trailer
+// Last Byte:   Trailer
+void LCD_PrepareBuffers(void) {
+    Disp_send.display_setup[0] = DYNAMIC_MODE;  // Command
+    Disp_send.display_setup[1] = 128;           // Address of line 1 ('1' bit reversed)
+    Temp.TIME.display_setup2[0] = DYNAMIC_MODE;  // Command
+    Temp.TIME.display_setup2[1] = 128;           // Address of line 1 ('1' bit reversed)
     for(uint8_t i=0; i<128; i++) {
-        uint8_t r=i+2;
-        REVERSE(r);
-        Disp_send.buffer1[16+i*18] = 0;    // Trailer
-        Disp_send.buffer1[17+i*18] = r;    // Address (or Trailer of last line)
-        Disp_send.buffer2[16+i*18] = 0;    // Trailer
-        Disp_send.buffer2[17+i*18] = r;    // Address (or Trailer of last line)
-        Disp_send.buffer3[16+i*18] = 0;    // Trailer
-        Disp_send.buffer3[17+i*18] = r;    // Address (or Trailer of last line)
+	    uint8_t r=i+2;                          // Address of line 2
+	    REVERSE(r);                             // The address needs to be bit reversed
+	    // Each line needs 18 bytes of data, prepare the first two bytes:
+	    Disp_send.display_data[16+i*18] = 0;    // Trailer
+	    Disp_send.display_data[17+i*18] = r;    // Address (or Trailer of last line)
+	    Temp.TIME.buffer2[16+i*18] = 0;    // Trailer
+	    Temp.TIME.buffer2[17+i*18] = r;    // Address (or Trailer of last line)
+	    Temp.TIME.buffer3[16+i*18] = 0;    // Trailer
+	    Temp.TIME.buffer3[17+i*18] = r;    // Address (or Trailer of last line)
     }
-    Disp_send.buffer1[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
-    Disp_send.buffer2[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
+    Disp_send.display_data[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
+    Temp.TIME.buffer2[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
+    Temp.TIME.buffer3[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
 }
 
 void GLCD_LcdOff(void)	{

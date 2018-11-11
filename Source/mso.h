@@ -23,7 +23,7 @@ email me at: gabriel@gabotronics.com
 #include "ffft.h"
 
 enum {  // Menu reference:
-    Mdefault,   // Default Menu
+    MTIME,      // Default Menu
     MCH1,       // " CH  ON  \0      GAIN-    \0   GAIN+", // Channel 1
     MCH2,       // " CH  ON  \0      GAIN-    \0   GAIN+", // Channel 2
     MCHD,       // "LOGIC ON \0     SELECT   \0 PROTOCOL", // Logic
@@ -120,6 +120,7 @@ void MSO(void);
 void Apply(void);                       // Apply oscilloscope settings
 void StartDMAs(void);
 void CheckPost(void);               // Check Post Trigger
+void SaveEE(void);          // Save settings to EEPROM
 
 extern uint8_t old_s;
 extern uint8_t old_g1;

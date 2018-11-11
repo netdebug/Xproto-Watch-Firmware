@@ -24,6 +24,7 @@ email me at: gabriel@gabotronics.com
 #include "display.h"
 #include "awg.h"
 #include "interface.h"
+//#include "usb_xmega.h"
 
 #define SOH     0x01    // start of heading
 #define STX     0x02    // start of text
@@ -56,7 +57,7 @@ ISR(USARTE0_RXC_vect) {
     char command;
     uint8_t *p;
     uint8_t i=0,j;
-    RTC.CNT=0;  // Clear screen saver timer
+
     OFFGRN();   // In case the LED was on
     command = USARTE0.DATA;
     switch(command) {
@@ -248,11 +249,11 @@ void send (uint8_t d) {
 
 // UART UDRE interrupt
 ISR(USARTE0_DRE_vect) {
-    uint8_t n, i;
+    uint8_t n;
     n = txfifo.count;
     if(n) {
         txfifo.count = --n;
-        i = txfifo.idx_r;
+        uint8_t i = txfifo.idx_r;
         USARTE0.DATA = txfifo.buff[i++];
         if(i >= sizeof(txfifo.buff)) i = 0;
         txfifo.idx_r = i;

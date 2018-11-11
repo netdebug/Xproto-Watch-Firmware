@@ -3,9 +3,9 @@
 XMEGA Oscilloscope and Development Kit
 
 Gabotronics
-February 2012
+October 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
 This file is proprietary software.
 
@@ -39,6 +39,8 @@ email me at: gabriel@gabotronics.com
 #include "awg.h"
 #include "interface.h"
 #include "USB\usb_xmega.h"
+#include "tables.h"
+#include "utils.h"
 
 // Function prototypes
 void Reduce(void);
@@ -51,7 +53,7 @@ static inline void ShowCursorV(void);   // Display Vertical Cursor
 static inline void ShowCursorH(void);   // Display Horizontal Cursor
 void CheckMax(void);                // Check variables
 void CheckPost(void);               // Check Post Trigger
-void Apply(void);                   // Apply oscilloscope settings
+static inline void LoadEE(void);                  // Load settings from EEPROM
 
 // Global variables
 uint8_t  adjusting = 0;             // Auto setup adjusting step
@@ -69,17 +71,17 @@ uint8_t EEMEM EEHPos = 0;           // Position for EE in XY mode
 
 // ADC system clock timers
 
-// TCE0 controls Interrupt ADC, srate: 6    7    8    9    10
-const uint16_t TCE0val[5] PROGMEM = { 249, 499, 999, 2499, 4999 };
+// TCE1 controls Interrupt ADC, srate: 6    7    8    9    10
+const uint16_t TCE1val[5] PROGMEM = { 249, 499, 999, 2499, 4999 };
 
-// TCE0 timer is fixed for slow sampling rates (20mS/div and under)
+// TCE1 timer is fixed for slow sampling rates (20mS/div and under)
 // slowcnt controls the sampling rate.
 const uint16_t slowcnt[11] PROGMEM = { 1,2,4,8,20,40,80,200,400,800,2000 };
 
 /* Clock Timer table:
-// TCE0 freq = fPER / (N(CCA+1)) = 32M / (2(CCA+1))
-// Slow sampling: TCE0 = 640Hz, rate = 32*slowcnt/640
-rate SCOPE SETTING  Min. F      Max.F     S/s  Oversample ADCCLK  PRESCALE TCE0 slowcnt  Method
+// TCE1 freq = fPER / (N(CCA+1)) = 32M / (2(CCA+1))
+// Slow sampling: TCE1 = 640Hz, rate = 32*slowcnt/640
+rate SCOPE SETTING  Min. F      Max.F     S/s  Oversample ADCCLK  PRESCALE TCE1 slowcnt  Method
 0       8 uS/div   7812.50Hz     1 MHz     2M      x1     2 MHz     16     x     x       DMA ADC free run
 1      16 uS/div   3906.25Hz   500 kHz     1M      x2     2 MHz     16     x     x       DMA ADC free run
 2      32 uS/div  1953.125Hz   250 kHz   500k      x2     2 MHz     16     x     x       DMA ADC free run
@@ -91,17 +93,17 @@ rate SCOPE SETTING  Min. F      Max.F     S/s  Oversample ADCCLK  PRESCALE TCE0 
 8       2 mS/div    31.250Hz     4 kHz     8k      x2   125 kHz     32    999    x       DMA w/Timer
 9       5 mS/div    12.500Hz   1.6 kHz   3.2k      x2   125 kHz     32    2499   x       DMA w/Timer
 10     10 mS/div     6.250Hz   800 Hz    1.6k      x2   125 kHz     32    4999   x       DMA w/Timer
-11     20 mS/div     6.250Hz   800 Hz    1.6k      x1   125 kHz     32    4999   1       ISR TCE0 1600Hz
-12     50 mS/div     2.500Hz   320 Hz     640      x2   125 kHz     32    6249   2       ISR TCE0 1280Hz
-13    100 mS/div     1.250Hz   160 Hz     320      x4   125 kHz     32    6249   4       ISR TCE0 1280Hz
-14    200 mS/div     0.625Hz    80 Hz     160      x8   125 kHz     32    6249   8       ISR TCE0 1280Hz
-15    500 mS/div     0.250Hz    32 Hz      64     x20   125 kHz     32    6249   20      ISR TCE0 1280Hz
-16      1  S/div     0.125Hz    16 Hz      32     x40   125 kHz     32    6249   40      ISR TCE0 1280Hz
-17      2  S/div     0.063Hz     8 Hz      16     x80   125 kHz     32    6249   80      ISR TCE0 1280Hz
-18      5  S/div     0.025Hz   3.2 Hz     6.4    x200   125 kHz     32    6249   200     ISR TCE0 1280Hz
-19     10  S/div     0.013Hz   1.6 Hz     3.2    x400   125 kHz     32    6249   400     ISR TCE0 1280Hz
-20     20  S/div     0.006Hz   0.8 Hz     1.6    x800   125 kHz     32    6249   800     ISR TCE0 1280Hz
-21     50  S/div     0.003Hz  0.32 Hz    0.64   x2000   125 kHz     32    6249   2000    ISR TCE0 1280Hz */
+11     20 mS/div     6.250Hz   800 Hz    1.6k      x1   125 kHz     32    4999   1       ISR TCE1 1600Hz
+12     50 mS/div     2.500Hz   320 Hz     640      x2   125 kHz     32    6249   2       ISR TCE1 1280Hz
+13    100 mS/div     1.250Hz   160 Hz     320      x4   125 kHz     32    6249   4       ISR TCE1 1280Hz
+14    200 mS/div     0.625Hz    80 Hz     160      x8   125 kHz     32    6249   8       ISR TCE1 1280Hz
+15    500 mS/div     0.250Hz    32 Hz      64     x20   125 kHz     32    6249   20      ISR TCE1 1280Hz
+16      1  S/div     0.125Hz    16 Hz      32     x40   125 kHz     32    6249   40      ISR TCE1 1280Hz
+17      2  S/div     0.063Hz     8 Hz      16     x80   125 kHz     32    6249   80      ISR TCE1 1280Hz
+18      5  S/div     0.025Hz   3.2 Hz     6.4    x200   125 kHz     32    6249   200     ISR TCE1 1280Hz
+19     10  S/div     0.013Hz   1.6 Hz     3.2    x400   125 kHz     32    6249   400     ISR TCE1 1280Hz
+20     20  S/div     0.006Hz   0.8 Hz     1.6    x800   125 kHz     32    6249   800     ISR TCE1 1280Hz
+21     50  S/div     0.003Hz  0.32 Hz    0.64   x2000   125 kHz     32    6249   2000    ISR TCE1 1280Hz */
 
 // milivolts or volts per pixels * 100000 / 32
 // Range                      5.12V 2.56V 1.28V 0.64V  320mV  160mV   80mV
@@ -126,43 +128,44 @@ const uint16_t timeval[22] PROGMEM = {   // = Time division * 10000 / (16*250)
     25,50,125,250,500,1250 };
 
 const char menustxt[][35] PROGMEM = {           // Menus:
-    " CH ON   \0      GAIN-    \0   GAIN+",     // 0  Channel
-    "LOGIC ON \0     SELECT   \0 PROTOCOL",     // 1  Logic
-    " NORMAL   \0    SINGLE   \0 CIRCULAR",     // 2  Sniffer mode
-    " NORMAL   \0    SINGLE   \0    AUTO ",     // 3  Trigger Type
-    " VCURSOR \0   HCUR CH1  \0  HCUR CH2",     // 4  Cursor
-    " HAMMING   \0    HANN   \0  BLACKMAN",     // 5  Spectrum Analyzer Window
-    "  CH1    \0       CH2     \0  LOGIC ",     // 6  Trigger Source
-    " GRID   \0  FLIP DISPLAY \0  INVERT ",     // 7  Display
-    "  VDC      \0   V P-P  \0 FREQUENCY ",     // 8  Meter mode
-    "  SINE    \0    SQUARE  \0  TRIANGLE",     // 9  AWG
-    "POSITION   \0   INVERT   \0    MATH ",     // 10 Channel options
-    "POSITION   \0   INVERT  \0   THICK0 ",     // 11 Logic options 1
-    " CH1 \0          CH2 \0        LOGIC",     // 12 Menu Select 1 - Channel
-    "TRIGTYPE  \0   TRIGSRC   \0 MORETRIG",     // 13 Menu Select 2 - Trigger
-    " SCOPE    \0    METER   \0      FFT ",     // 14 Menu Select 3 - Mode
-    " IQ FFT   \0  FFT WINDOW  \0    LOG ",     // 15 Menu Select 4 - FFT
-    "CURSORS \0     DISPLAY  \0       AWG",     // 16 Menu Select 5 - Misc
-    "WAVE TYPE  \0   SWEEP   \0 FREQUENCY",     // 17 AWG Menu 2
-    " WINDOW   \0    EDGE    \0    SLOPE ",     // 18 Trigger Mode
-    "  AUTO     \0   TRACK   \0 REFERENCE",     // 19 More Cursor Options
-    "  ALL     \0    BIT_0    \0    BIT_1",     // 20 Logic Channel Select
-    " BIT_2    \0    BIT_3    \0    BIT_4",     // 21 Logic Channel Select
-    " BIT_5    \0    BIT_6    \0    BIT_7",     // 22 Logic Channel Select
-    " EXT TRIG \0    BIT_0    \0    BIT_1",     // 23 Logic Trigger Select
-    " PARALLEL  \0   SERIAL  \0      PULL",     // 24 Logic options 2
-    " I2C      \0     UART    \0     SPI ",     // 25 Protocol
-    " NO PULL  \0   PULL UP  \0 PULL DOWN",     // 26 Logic Inputs Pull
-    " PERSISTENT  \0  LINE   \0     SHOW ",     // 27 Display
-    " CPOL     \0    CPHA    \0 INVERT SS",     // 28 SPI Clock polarity and phase
-    " SUBTRACT \0  MULTIPLY  \0  AVERAGE ",     // 29 Channel math
-    "AMPLITUDE \0  DUTY CYCLE \0   OFFSET",     // 30 AWG Menu 3
-    " ROLL     \0   ELASTIC  \0  XY MODE ",     // 31 Scope options
-    "TRIGMODE  \0  POSTTRIG \0   TRIGHOLD",     // 32 Menu Trigger 2
-    " EXP      \0    NOISE   \0   CUSTOM ",     // 33 AWG Menu 4
-    " SPEED    \0    MODE    \0    RANGE ",     // 34 AWG Menu 5
-    "SW FREQ    \0  SW AMP   \0  SW DUTY ",     // 35 AWG Menu 6
-    "  DOWN    \0  PINGPONG   \0  ACCEL\0",     // 36 Sweep Mode Menu
+    "  STOP  \0      TIME+    \0   TIME- ",     // 0  Time division
+    " CH ON   \0     GAIN-    \0   GAIN+ ",     // 1  Channel
+    "LOGIC ON \0     SELECT   \0 PROTOCOL",     // 2  Logic
+    " NORMAL   \0    SINGLE   \0 CIRCULAR",     // 3  Sniffer mode
+    " NORMAL   \0    SINGLE   \0    AUTO ",     // 4  Trigger Type
+    " VCURSOR \0   HCUR CH1  \0  HCUR CH2",     // 5  Cursor
+    " HAMMING   \0    HANN   \0  BLACKMAN",     // 6  Spectrum Analyzer Window
+    "  CH1    \0       CH2     \0  LOGIC ",     // 7  Trigger Source
+    " GRID   \0  FLIP DISPLAY \0  INVERT ",     // 8  Display
+    "  VDC      \0   V P-P  \0 FREQUENCY ",     // 9  Meter mode
+    "  SINE    \0    SQUARE  \0  TRIANGLE",     // 10  AWG
+    "POSITION   \0   INVERT   \0    MATH ",     // 11 Channel options
+    "POSITION   \0   INVERT  \0   THICK0 ",     // 12 Logic options 1
+    " CH1 \0          CH2 \0        LOGIC",     // 13 Menu Select 1 - Channel
+    "TRIGTYPE  \0   TRIGSRC   \0 MORETRIG",     // 14 Menu Select 2 - Trigger
+    " SCOPE    \0    METER   \0      FFT ",     // 15 Menu Select 3 - Mode
+    " IQ FFT   \0  FFT WINDOW  \0    LOG ",     // 16 Menu Select 4 - FFT
+    "CURSORS \0     DISPLAY  \0       AWG",     // 17 Menu Select 5 - Misc
+    "WAVE TYPE  \0   SWEEP   \0 FREQUENCY",     // 18 AWG Menu 2
+    " WINDOW   \0    EDGE    \0    SLOPE ",     // 19 Trigger Mode
+    "  AUTO     \0   TRACK   \0 REFERENCE",     // 20 More Cursor Options
+    "  ALL     \0    BIT_0    \0    BIT_1",     // 21 Logic Channel Select
+    " BIT_2    \0    BIT_3    \0    BIT_4",     // 22 Logic Channel Select
+    " BIT_5    \0    BIT_6    \0    BIT_7",     // 23 Logic Channel Select
+    " EXT TRIG \0    BIT_0    \0    BIT_1",     // 24 Logic Trigger Select
+    " PARALLEL  \0   SERIAL  \0      PULL",     // 25 Logic options 2
+    " I2C      \0     UART    \0     SPI ",     // 26 Protocol
+    " NO PULL  \0   PULL UP  \0 PULL DOWN",     // 27 Logic Inputs Pull
+    " PERSISTENT  \0  LINE   \0     SHOW ",     // 28 Display
+    " CPOL     \0    CPHA    \0 INVERT SS",     // 29 SPI Clock polarity and phase
+    " SUBTRACT \0  MULTIPLY  \0  AVERAGE ",     // 30 Channel math
+    "AMPLITUDE \0  DUTY CYCLE \0   OFFSET",     // 31 AWG Menu 3
+    " ROLL     \0   ELASTIC  \0  XY MODE ",     // 32 Scope options
+    "TRIGMODE  \0  POSTTRIG \0   TRIGHOLD",     // 33 Menu Trigger 2
+    " EXP      \0    NOISE   \0   CUSTOM ",     // 34 AWG Menu 4
+    " SPEED    \0    MODE    \0    RANGE ",     // 35 AWG Menu 5
+    "SW FREQ    \0  SW AMP   \0  SW DUTY ",     // 36 AWG Menu 6
+    "  DOWN    \0  PINGPONG   \0  ACCEL\0",     // 37 Sweep Mode Menu
 //  " FREQUENCY \0  COUNTER \0 PUL WIDTH ",     //    Frequency counter menu
 //  " IRDA     \0   1 WIRE    \0    MIDI ",     //    More Sniffer protocols
 //  " SWEEP    \0  CV/GATE  \0 POS. RANGE",     //    Advanced Sweep Settings
@@ -170,50 +173,51 @@ const char menustxt[][35] PROGMEM = {           // Menus:
 };
 
 const char menupoint[] PROGMEM = {  // Menu text table
-    0,  // MCH1 Channel 1
-    0,  // MCH2 Channel 2
-    1,  // MCHD Logic
-    2,  // MSNIFFER Sniffer mode
-    3,  // MTRIGTYPE Trigger Type
-    4,  // MCURSOR1 Cursor
-    5,  // MWINDOW Spectrum Analyzer Window
-    6,  // MSOURCE Trigger Source
-    7,  // MDISPLAY1 Display
-    8,  // MMETER Meter mode
-    9,  // MAWG AWG
-    10, // MCH1OPT Channel 1 options
-    10, // MCH2OPT Channel 2 options
-    11, // MCHDOPT1 Logic options 1
-    12, // MMAIN1 Menu Select 1 - Channel
-    13, // MMAIN2 Menu Select 2 - Trigger
-    14, // MMAIN3 Menu Select 3 - Mode
-    15, // MMAIN4 Menu Select 4 - FFT
-    16, // MMAIN5 Menu Select 5 - Misc
-    17, // MAWG2 AWG Menu 2
-    33, // MAWG4 AWG Menu 4
-    34, // MAWG5 AWG Menu 5
-    35, // MAWG6 AWG Menu 6
+    0,  // Default menu - Time division
+    1,  // MCH1 Channel 1
+    1,  // MCH2 Channel 2
+    2,  // MCHD Logic
+    3,  // MSNIFFER Sniffer mode
+    4,  // MTRIGTYPE Trigger Type
+    5,  // MCURSOR1 Cursor
+    6,  // MWINDOW Spectrum Analyzer Window
+    7,  // MSOURCE Trigger Source
+    8,  // MDISPLAY1 Display
+    9,  // MMETER Meter mode
+    10,  // MAWG AWG
+    11, // MCH1OPT Channel 1 options
+    11, // MCH2OPT Channel 2 options
+    12, // MCHDOPT1 Logic options 1
+    13, // MMAIN1 Menu Select 1 - Channel
+    14, // MMAIN2 Menu Select 2 - Trigger
+    15, // MMAIN3 Menu Select 3 - Mode
+    16, // MMAIN4 Menu Select 4 - FFT
+    17, // MMAIN5 Menu Select 5 - Misc
+    18, // MAWG2 AWG Menu 2
+    34, // MAWG4 AWG Menu 4
+    35, // MAWG5 AWG Menu 5
+    36, // MAWG6 AWG Menu 6
 //    37, // MAWG7 AWG Menu 7
 //    38, // MCVG CV/Gate Menu
-    31, // MSCOPEOPT Scope options
-    32, // MTRIG2 Trigger menu 2
-    18, // MTRIGMODE Trigger edge and mode
-    19, // MCURSOR2 More Cursor Options
-    20, // MCHDSEL1 Logic Channel Select
-    21, // MCHDSEL2 Logic Channel Select
-    22, // MCHDSEL3 Logic Channel Select
-    23, // MTSEL1 Logic Trigger Select
-    21, // MTSEL2 Logic Trigger Select
-    22, // MTSEL3 Logic Trigger Select
-    24, // MCHDOPT2 Logic options 2
-    25, // MPROTOCOL Protocol
-    26, // MCHDPULL Logic Inputs Pull
-    27, // MDISPLAY2 Display
-    28, // MSPI SPI Clock polarity and phase
-    29, // MCH1MATH Channel 1 math
-    29, // MCH2MATH Channel 2 math
-    30, // MAWG3 AWG Menu 3
-    36, // MSWMODE Sweep Mode Menu
+    32, // MSCOPEOPT Scope options
+    33, // MTRIG2 Trigger menu 2
+    19, // MTRIGMODE Trigger edge and mode
+    20, // MCURSOR2 More Cursor Options
+    21, // MCHDSEL1 Logic Channel Select
+    22, // MCHDSEL2 Logic Channel Select
+    23, // MCHDSEL3 Logic Channel Select
+    24, // MTSEL1 Logic Trigger Select
+    22, // MTSEL2 Logic Trigger Select
+    23, // MTSEL3 Logic Trigger Select
+    25, // MCHDOPT2 Logic options 2
+    26, // MPROTOCOL Protocol
+    27, // MCHDPULL Logic Inputs Pull
+    28, // MDISPLAY2 Display
+    29, // MSPI SPI Clock polarity and phase
+    30, // MCH1MATH Channel 1 math
+    30, // MCH2MATH Channel 2 math
+    31, // MAWG3 AWG Menu 3
+    37, // MSWMODE Sweep Mode Menu
 };
 
 const char Next[] PROGMEM = {  // Next Menu
@@ -222,46 +226,46 @@ const char Next[] PROGMEM = {  // Next Menu
     MCH1OPT,    // MCH1 Channel 1
     MCH2OPT,    // MCH2 Channel 2
     MCHDOPT1,   // MCHD Logic
-    Mdefault,   // MSNIFFER Sniffer mode
+    MTIME,   // MSNIFFER Sniffer mode
     MMAIN2,     // MTRIGTYPE Trigger Type
     MCURSOR2,   // MCURSOR1 Cursor
     MMAIN4,     // MWINDOW Spectrum Analyzer Window
     MMAIN2,     // MSOURCE Trigger Source
-    Mdefault,   // MDISPLAY1 Display
+    MTIME,   // MDISPLAY1 Display
     MMAIN3,     // MMETER Meter mode
     MAWG4,      // MAWG AWG
-    Mdefault,   // MCH1OPT 1 Channel 1
-    Mdefault,   // MCH2OPT 2 Channel 2
+    MTIME,   // MCH1OPT 1 Channel 1
+    MTIME,   // MCH2OPT 2 Channel 2
     MCHDOPT2,   // MCHDOPT1 3 Logic
     MMAIN2,     // MMAIN1 Menu Select 1 - Channel
     MMAIN3,     // MMAIN2 Menu Select 2 - Trigger
     MMAIN5,     // MMAIN3 Menu Select 3 - Mode
     MMAIN3,     // MMAIN4 Menu Select 4 - FFT
-    Mdefault,   // MMAIN5 Menu Select 5 - Misc
+    MTIME,   // MMAIN5 Menu Select 5 - Misc
     MAWG3,      // MAWG2 AWG Menu 2
     MAWG2,      // MAWG4 AWG Menu 4
-    Mdefault,   // MAWG5 AWG Menu 5
+    MTIME,   // MAWG5 AWG Menu 5
     MAWG5,      // MAWG6 AWG Menu 6
 //    Mdefault,   // MAWG7 AWG Menu 7
 //    Mdefault,   // MCVG CV/Gate Menu
     MMAIN3,     // MSCOPEOPT Scope options
-    Mdefault,   // MTRIG2 Trigger Menu 2
+    MTIME,   // MTRIG2 Trigger Menu 2
     MTRIG2,     // MTRIGMODE Trigger edge and mode
-    Mdefault,   // MCURSOR2 More Cursor Options
+    MTIME,   // MCURSOR2 More Cursor Options
     MCHDSEL2,   // MCHDSEL1 Logic Channel Select
     MCHDSEL3,   // MCHDSEL2 Logic Channel Select
-    Mdefault,   // MCHDSEL3 Logic Channel Select
+    MTIME,   // MCHDSEL3 Logic Channel Select
     MTSEL2,     // MTSEL1 Logic Trigger Select
     MTSEL3,     // MTSEL2 Logic Trigger Select
-    Mdefault,   // MTSEL3 Logic Trigger Select
-    Mdefault,   // MCHDOPT2 Decode
-    Mdefault,   // MPROTOCOL Protocol
-    Mdefault,   // MCHDPULL Logic Inputs Pull
+    MTIME,   // MTSEL3 Logic Trigger Select
+    MTIME,   // MCHDOPT2 Decode
+    MTIME,   // MPROTOCOL Protocol
+    MTIME,   // MCHDPULL Logic Inputs Pull
     MDISPLAY1,  // MDISPLAY2 Display
     MSNIFFER,   // MSPI SPI Clock polarity and phase
-    Mdefault,   // MCH1MATH Channel 1 math
-    Mdefault,   // MCH2MATH Channel 2 math
-    Mdefault,   // MAWG3 AWG Menu 3
+    MTIME,   // MCH1MATH Channel 1 math
+    MTIME,   // MCH2MATH Channel 2 math
+    MTIME,   // MAWG3 AWG Menu 3
     MAWG5,      // MSWMODE Sweep mode menu
     MSNIFFER,   // MUART UART Settings
     MTRIG2,     // MPOSTT Post Trigger
@@ -287,9 +291,14 @@ const char Next[] PROGMEM = {  // Next Menu
     MCURSOR1,   // MCH2HC2 H Cursor 2 CH2
 };
 
-const char gaintxt[][5] PROGMEM = {        // Gain Text with x1 probe
+const char gaintxt[][5] PROGMEM = {             // Gain Text with x1 probe
     "5.12", "2.56", "1.28", "0.64",             //  5.12,  2.56, 1.28, 0.64
     "0.32", "0.16", { '8', '0', 0x1A, 0x1B, 0 } //  0.32,  0.16,  80m, invalid
+};
+
+const char gainx10txt[][5] PROGMEM = {          // Gain Text with x10 probe
+	"51.2", "25.6", "12.8", "6.40",             //  51.2,  25.6, 12.8, 6.40
+	"3.20", "1.60", "0.80"                      //  3.20,  1.60, 0.80, invalid
 };
 
 const char ratetxt[][5] PROGMEM = {
@@ -363,8 +372,10 @@ void MSO(void) {
     uint8_t chdtrigpos;             // Digital channel trigger position
     const char *text;               // Pointer to constant text
 
+    LoadEE();                   // Load settings
+    
     // Event System
-    EVSYS.CH0MUX    = 0xE0;     // Event CH0 = TCE0 overflow used for ADC
+    EVSYS.CH0MUX    = 0xE8;     // Event CH0 = TCE1 overflow used for ADC
     EVSYS.CH1MUX    = 0x20;     // Event CH1 = ADCA CH0 conversion complete
     //EVSYS.CH2MUX    = 0x5A;     // Event CH2 = PORTB Pin 2 (External Trigger)
     EVSYS.CH3MUX    = 0xD8;     // Event CH3 = TCD1 overflow used for DAC
@@ -385,7 +396,7 @@ void MSO(void) {
     // DMA for DAC
     DMA.CH3.ADDRCTRL  = 0xD0;   // Reload after transaction, Increment source
     DMA.CH3.TRIGSRC   = 0x26;   // Trigger source is DACB CH1
-    DMA.CH3.TRFCNT    = 256;    // AWG Buffer is 256 bytes
+    DMA.CH3.TRFCNT    = 1024;   // AWG Buffer is 1024 bytes
 	DMA.CH3.SRCADDR0  = (((uint16_t) AWGBuffer)>>0*8) & 0xFF;
 	DMA.CH3.SRCADDR1  = (((uint16_t) AWGBuffer)>>1*8) & 0xFF;
 //	DMA.CH3.SRCADDR2  = 0;
@@ -396,29 +407,30 @@ void MSO(void) {
     DMA.CTRL          = 0x80;           // Enable DMA, single buffer, round robin
 
     old_s=Srate; old_g1=M.CH1gain; old_g2=M.CH2gain;
-    Menu = Mdefault;                // Set default menu
+    Menu = MTIME;                // Set default menu
     setbit(MStatus, update);        // Force second layer to update
     setbit(MStatus, updatemso);     // Apply settings
     setbit(MStatus, updateawg);     // Generate wave
-    setbit(Key, userinput);         // To prevent the update bit to be cleared, on the first loop
+    setbit(Misc, userinput);     // To prevent the update bit to be cleared, on the first loop
+
     setbit(Misc, redraw);           // Clear logo
-    Key=0;
+    Buttons=0;
 
     for(;;) {
 		if(testbit(MStatus, updatemso)) Apply();
         if(testbit(MStatus, gosniffer)) {
-            Key=0;  // Clear key before entering Sniffer
+            Buttons=0;  // Clear key before entering Sniffer
             clrbit(MStatus, stop);
             SaveEE();
             Sniff();
             Apply();    // Recover settings, particularly PORTC.PIN7CTRL
         }
         if(testbit(Misc,keyrep)) {  // Repeat key or long press
-            if(testbit(Key,K1) && testbit(MStatus,stop)) AutoSet();       // Long press KA -> Autoset
-            if ((Menu>=MPOSTT) && (testbit(Key,K2) || testbit(Key,K3))) {    // Repeat key
-                setbit(Key, userinput);
+            if(testbit(Buttons,K1) && testbit(MStatus,stop)) AutoSet();       // Long press KA -> Autoset
+            if ((Menu>=MPOSTT) && (testbit(Buttons,K2) || testbit(Buttons,K3))) {    // Repeat key
+                setbit(Misc, userinput);
             }
-            if (testbit(Key,KM)) return;                    // Exit MSO
+            if (testbit(Buttons,KML)) return;                    // Exit MSO
         }
 ///////////////////////////////////////////////////////////////////////////////
 // Wait for trigger, start acquisition
@@ -449,9 +461,11 @@ void MSO(void) {
                 TCC1.PERL = lobyte(Tpost);
                 TCC1.PERH = hibyte(Tpost);
                 TCC0.CNTL = TCC0.PERL;
-                RTC.INTCTRL = 0x00;     // Disable Menu Timeout interrupt
                 setbit(TCC0.INTFLAGS, TC2_LUNFIF_bp);    // Clear trigger timeout interrupt
                 if(testbit(Trigger, autotrg)) TCC0.INTCTRLA |= TC2_LUNFINTLVL_LO_gc; // Enable Trigger timeout Interrupt
+                // Waiting for the trigger event can take an undetermined amount of time ->
+                // Turn the Watchdog timer off
+                CCPWrite(&WDT.CTRL, WDT_PER_8KCLK_gc | WDT_CEN_bm);
                 uint8_t tlevelo;
 				if(M.Tsource==0) { // // CH1 is trigger source
                     tlevelo=addwsat(M.Tlevel, -CH1.offset);
@@ -497,9 +511,11 @@ void MSO(void) {
                     if(testbit(Trigger, trigdir)) trigdownCHD(M.Tsource-2);
                     else trigupCHD(M.Tsource-2);
                 }
+                // Watchdog timer on
+                CCPWrite(&WDT.CTRL, WDT_PER_8KCLK_gc | WDT_ENABLE_bm | WDT_CEN_bm);           
             }
         }
-        //RTC.INTCTRL = 0x04;     // Re enable Time out interrupt
+        //RTC.INTCTRL = 0x04;     // Re enable Menu Time out interrupt
         TCC0.INTCTRLA &= ~TC2_LUNFINTLVL_LO_gc; // Trigger timeout Interrupt not needed
 ///////////////////////////////////////////////////////////////////////////////
 // Finish acquiring data, not in Pulse Counter mode
@@ -510,7 +526,7 @@ void MSO(void) {
                 uint16_t circular;          // Index of circular buffer                
                 // Stop DMA trigger sources if in FREE mode
                 _delay_us(500);             // 10ms/div may need time to complete one more sample
-                TCE0.CTRLA = 0;
+                TCE1.CTRLA = 0;
                 ADCA.CTRLB = 0x14;          // signed mode, no free run, 8 bit
                 ADCB.CTRLB = 0x14;          // signed mode, no free run, 8 bit
                 // capture one last sample set
@@ -580,7 +596,7 @@ void MSO(void) {
                     if(testbit(Display,elastic)) {
                         *p1=average(*p1,ch1end);    // Can't increase in the same operation
                         *p2=average(*p2,ch2end);    // (*p1++=average(*p1,ch1end);)
-                        *p1++; *p2++;               // So increase later
+                        p1++; p2++;               // So increase later
                     }
                     else {
                         *p1++=ch1end;
@@ -624,7 +640,6 @@ void MSO(void) {
 				}
 				// USB - Send new data if previous transfer complete
 				if((endpoints[1].in.STATUS & USB_EP_TRNCOMPL0_bm)) {
-                    //RTC.CNT = 0;    // Prevent going to sleep if connected to USB
 					endpoints[1].in.AUXDATA = 0;				// New transfer must clear AUXDATA
 					endpoints[1].in.CNT = 770 | USB_EP_ZLP_bm;	// Send 256*3 bytes + frame, enable Auto Zero Length Packet
 					endpoints[1].in.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_OVF_bm);
@@ -635,9 +650,9 @@ void MSO(void) {
             else {
                 if(testbit(Mcursors,roll)) {
                     clrbit(MStatus, triggered);
-                    if(!testbit(MStatus,stop)) TCE0.INTCTRLA = TC_OVFINTLVL_MED_gc;    // Enable sampling interrupt
+                    if(!testbit(MStatus,stop)) TCE1.INTCTRLA = TC_OVFINTLVL_MED_gc;    // Enable sampling interrupt
                 }
-                else if(!testbit(Misc,sacquired)) TCE0.INTCTRLA = TC_OVFINTLVL_MED_gc;  // Enable sampling interrupt
+                else if(!testbit(Misc,sacquired)) TCE1.INTCTRLA = TC_OVFINTLVL_MED_gc;  // Enable sampling interrupt
                 else {    // Acquired complete buffer
                     clrbit(Misc, sacquired);
                     clrbit(MStatus, triggered);
@@ -650,7 +665,7 @@ void MSO(void) {
                 setbit(MStatus, stop);
                 if(Srate<11 && Menu!=MTRIGTYPE) Menu=MHPOS;  // Horizontal Scroll
             }
-            if(!testbit(Key, userinput)) clrbit(MStatus, update);
+            if(!testbit(Misc, userinput)) clrbit(MStatus, update);
             sei();
         }
         clrbit(DMA.CH0.CTRLA, 7);
@@ -662,7 +677,7 @@ void MSO(void) {
             if(!testbit(Display, persistent)) {
                 if(((testbit(MFFT, fftmode) || testbit(MFFT, xymode))) ||
                 (testbit(MFFT, scopemode) && (Srate<11 || testbit(Mcursors,roll))))
-                clr_display();
+                clr_display_1();
             }
 ///////////////////////////////////////////////////////////////////////////////
 // AWG sweep
@@ -747,6 +762,46 @@ void MSO(void) {
 ///////////////////////////////////////////////////////////////////////////////
 // Display MSO data
         if(testbit(MFFT, scopemode)) {
+            // Show reference waveforms
+            if(testbit(Mcursors, reference)) {
+                uint8_t i=0, j=0;
+                // The fast sampling rates only show 128 samples, starting at M.HPos
+                if(Srate<11) j=M.HPos;
+                uint8_t nx, ox, ny1, oy1, ny2, oy2;
+                int8_t eech1pos, eech2pos;
+                eech1pos=eeprom_read_byte(&EECH1Pos);
+                eech2pos=eeprom_read_byte(&EECH2Pos);
+                do {
+                    oy1=ny1; oy2=ny2;
+                    ny1=eeprom_read_byte(&EECHREF1[j]);
+                    ny2=eeprom_read_byte(&EECHREF2[j]);
+                    // Add position
+                    ny1=addwsat(ny1,eech1pos);
+                    ny1=ny1>>1; // Scale to LCD (128x64)
+                    if(ny1>=64) ny1=63;
+                    ny2=addwsat(ny2,eech2pos);
+                    ny2=ny2>>1; // Scale to LCD (128x64)
+                    if(ny2>=64) ny2=63;
+
+                    nx=i;
+                    ox=i-1;
+                    if(Srate>=11) {
+                        nx=nx>>1;
+                        ox=ox>>1;
+                    }
+                    if(testbit(Display, line)) {
+                        if(i==0) continue;
+                        if(testbit(CH1ctrl,chon)) lcd_line(nx, ny1, ox, oy1);
+                        if(testbit(CH2ctrl,chon)) lcd_line(nx, ny2, ox, oy2);
+                    }
+                    else {
+                        if(testbit(CH1ctrl,chon)) set_pixel(nx, ny1);
+                        if(testbit(CH2ctrl,chon)) set_pixel(nx, ny2);
+                    }
+                    if(Srate<11 && i>=127) break;
+                    j++;
+                } while(++i);
+            }            
             if(Srate<11 || testbit(Mcursors,roll)) {
                 uint8_t k=0, prev=0;
                 // Display new data
@@ -802,13 +857,13 @@ void MSO(void) {
                     if(testbit(Display, line)) {
                         if(i==0) continue;
                         if((temp1!=och1) || (temp1 && och1<MAX_Y))
-                            if(testbit(CH1ctrl,chon)) lcd_line(i, temp1, prev, och1);
+                            if(testbit(CH1ctrl,chon))          lcd_line(i, temp1, prev, och1);
                         if((temp2!=och2) || (temp2 && och2<MAX_Y))
                             if(testbit(CH2ctrl,chon)) lcd_line(i, temp2, prev, och2);
                     }
                     else {
                         // Don't draw when data==0 or data==MAX_Y, signal could be clipping
-                        if(testbit(CH1ctrl,chon) && temp1 && temp1<MAX_Y) set_pixel(i, temp1);
+                        if(testbit(CH1ctrl,chon) && temp1 && temp1<MAX_Y)          set_pixel(i, temp1);
                         if(testbit(CH2ctrl,chon) && temp2 && temp2<MAX_Y) set_pixel(i, temp2);
                     }
                     prev=i;
@@ -820,7 +875,7 @@ void MSO(void) {
 // Display XY
         if(testbit(MFFT, xymode)) {
             uint8_t *p1,*p2;
-            if(testbit(Display,showset)) tiny_printp(0,0,menustxt[31]+25); // "XY MODE"
+            if(testbit(Display,showset)) tiny_printp(0,0,menustxt[32]+25); // "XY MODE"
             p1=DC.CH1data;
             p2=DC.CH2data;
             uint8_t i=0; do {
@@ -832,6 +887,17 @@ void MSO(void) {
                 y=(*p2++)/*-M.HPos*/;
                 set_pixel(temp1>>1, y>>1); // Scale to 128
             } while(++i);
+            // Show reference waveforms
+            if(testbit(Mcursors, reference)) {
+                uint8_t i=0, eehpos;
+                eehpos = eeprom_read_byte(&EEHPos);
+                do {
+                    uint8_t ny1, ny2;
+                    ny1=255-eeprom_read_byte(&EECHREF1[i]);
+                    ny2=eeprom_read_byte(&EECHREF2[i])-eehpos;
+                    if(ny2<128) set_pixel(ny1>>1,ny2>>1);
+                } while(++i);
+            }
         }
 ///////////////////////////////////////////////////////////////////////////////
 // Display Frequency Spectrum
@@ -850,7 +916,6 @@ void MSO(void) {
                     divide = 1;  // divide by 2
                 }
                 if(testbit(MFFT,iqfft)) {   // Display new FFT data
-					uint8_t fftdata;
                     if(Display&0x03) {              // Grid
             			set_pixel(M.HPos,16);       // Vertical dot
     	        		set_pixel(M.HPos,32);       // Vertical dot
@@ -858,7 +923,7 @@ void MSO(void) {
 			        }
                     fft_stuff(NULL);
                     for(uint8_t i=0; i<FFT_N/2; i++) {
-				        fftdata=Temp.FFT.magn[(uint8_t)(i-M.HPos)]>>1;
+				        uint8_t fftdata=Temp.FFT.magn[(uint8_t)(i-M.HPos)]>>2;
 						if(fftdata>(MAX_Y-8)) fftdata=(MAX_Y-8);
                         if(testbit(Display, line)) lcd_line(i, (MAX_Y-8)-fftdata, i, (MAX_Y-8));
                         else set_pixel(i, (MAX_Y-8)-fftdata);
@@ -866,21 +931,19 @@ void MSO(void) {
                 }
                 else {
                     if(testbit(CH1ctrl,chon)) {     // Display new FFT data
-    					uint8_t fftdata;
                         CH1.f=fft_stuff(DC.CH1data);
                         for(i=0,j=0; j<FFT_N/2; i++,j++) {
-    				        fftdata=Temp.FFT.magn[j]>>divide;
+    				        uint8_t fftdata=Temp.FFT.magn[j]>>divide;
 							if(fftdata>temp1) fftdata=temp1;
                             if(testbit(Display, line)) lcd_line(i, temp1-fftdata, i, temp1);
                             else set_pixel(i, temp1-fftdata);
                         }
                     }
                     if(testbit(CH2ctrl,chon)) {
-    					uint8_t fftdata;
                         CH2.f=fft_stuff(DC.CH2data);
                         // Display new FFT data
                         for(i=0,j=0; j<FFT_N/2; i++,j++) {
-							fftdata=Temp.FFT.magn[j]>>divide;
+							uint8_t fftdata=Temp.FFT.magn[j]>>divide;
 							if(fftdata>temp1) fftdata=temp1;    
                             if(testbit(Display, line)) lcd_line(i, fft2pos-fftdata, i, fft2pos);
                             else set_pixel(i, fft2pos-fftdata);
@@ -896,40 +959,52 @@ void MSO(void) {
 ///////////////////////////////////////////////////////////////////////////////
 // Display Multimeter
         if(MFFT<0x20) {
-            if(!testbit(MStatus, triggered)) {  // Data ready
+            if(!testbit(MStatus, triggered) || (testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {  // Data ready or in Counter mode
                 if(adjusting==0) {              // Done adjusting, now show data
-                    uint8_t *p1,*p2;
                     adjusting = 4;              // Re-init autosetup
-                    clr_display();
-                    tiny_printp(12,0, menustxt[12]+1);   // CH1 text
-                    tiny_printp(76,0, menustxt[12]+16);  // CH2 Text
-                    if(testbit(MStatus,vdc) || testbit(MStatus,vp_p)) {
+                    clr_display_1();
+                    if(!(testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {
+                        tiny_printp(12,0, menustxt[13]+1);   // CH1 text
+                        tiny_printp(76,0, menustxt[13]+16);  // CH2 Text
+                    }
+                    if( ( testbit(MStatus,vdc) && !testbit(MStatus,vp_p)) ||
+                        (!testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {  // VDC or VPP, but not both
+                        uint8_t *p1,*p2;
                         // Always V Units in meter mode
                         tiny_printp(49,0,unitV);    // Display V units
                         tiny_printp(113,0,unitV);   // Display V units
                         // Display traces
                         p1=DC.CH1data;
                         p2=DC.CH2data;
-                        for (i=0; i<64; i++) {
+                        for (uint8_t i=0; i<64; i++) {
                             set_pixel(   i,28+((*p1++)>>3));
                             set_pixel(64+i,28+((*p2++)>>3));
                         }
                     }
-                    else {
+                    else {  // Frequency Counter
+                        uint8_t Source;
                         if(M.Tsource<2 || M.Tsource==10) {
-                            EVSYS.CH2MUX    = 0x5A;     // Event CH2 = PORTB Pin 2 (External Trigger)
-                            tiny_printp(16,3,  menustxt[23]+1);   // Ext Trigger text
+                            Source = 0x5A;     // Event CH2 = PORTB Pin 2 (External Trigger)
+                            tiny_printp(16,3,  menustxt[24]+1);   // "EXT TRIG" text
                         }                            
                         else {
-                            EVSYS.CH2MUX    = 0x60-2+M.Tsource;     // Event CH2 = PORTC Pin M.Tsource-2
-                            tiny_printp(16,3,  menustxt[6]+28);
-                            GLCD_Putchar('0'-2+M.Tsource);
+                            Source    = 0x60-2+M.Tsource;           // Event CH2 = PORTC Pin M.Tsource-2
+                            tiny_printp(16,3,  menustxt[7]+28);     // "LOGIC" Text
+                            GLCD_Putchar('0'-2+M.Tsource);          // ASCII number
                         }
-                        tiny_printp(98,3, unitkHz);
-                        if(Srate<=6) text = unitkHz;
-                        else text = unitkHz+1;  // Hz: Use same text as kHz, with + 1 offset
-                        tiny_printp(45,0,text);
-                        tiny_printp(109,0,text);
+                        if(testbit(MStatus,vdc)) {      // Counter mode
+                            adjusting = 0;              // No need to autosetup
+                            tiny_printp(98,3, count);
+                            if(testbit(MStatus, stop)) Source = 0;
+                        }
+                        else {                          // Frequency mode
+                            tiny_printp(98,3, unitkHz);
+                            if(Srate<=6) text = unitkHz;
+                            else text = unitkHz+1;  // Hz: Use same text as kHz, with + 1 offset
+                            tiny_printp(45,0,text);
+                            tiny_printp(109,0,text);
+                        }
+                        EVSYS.CH2MUX = Source;
                     }
                     Measurements();
                 }
@@ -1054,31 +1129,33 @@ void MSO(void) {
         }
 ///////////////////////////////////////////////////////////////////////////////
 // Check User Input
-        if(testbit(Key, userinput)) {
+        if(testbit(Misc, userinput)) {
             uint8_t oldsource=M.Tsource;
             oldsource=M.Tsource;
-            clrbit(Key, userinput);
-            if(testbit(Key,KB)) {
-                if(Menu==Mdefault) return; // Back key
-                Menu=Mdefault;
+            clrbit(Misc, userinput);
+            if(testbit(Buttons,KML)) {
+                if(Menu==MTIME) {
+                    SaveEE();       // Save settings when going to default menu
+                    return;
+                }
+                Menu=MTIME;
             }                 
             // Check key inputs KA thru KD depending on the menu
-            if(testbit(Key,KM)) {
-                if(Menu==MMAIN5) SaveEE();       // Save MSO settings
-                else if(Menu==MSNIFFER) setbit(MStatus, gosniffer);
+            if(testbit(Buttons,KBL)) {
+                if(Menu==MSNIFFER) setbit(MStatus, gosniffer);
                 Menu=pgm_read_byte_near(Next+Menu); // Menu flow
             }
             // Shortcuts
-            if(Menu>=MSWSPEED && Menu<=MCH2POS && testbit(Key,K1)) {
+            if(Menu>=MSWSPEED && Menu<=MCH2POS && testbit(Buttons,K1)) {
                 uint8_t *pmove;                 // pointer for move- move+ menus                
                 pmove = (uint8_t *)pgm_read_word(movetable+Menu-MSWSPEED);
                 *pmove=pgm_read_byte_near((&shortcuts[0][0])+(shortcuti++)+5*(Menu-MSWSPEED));
                 if(shortcuti>4) shortcuti=0;
             }
             switch(Menu) {
-                case Mdefault:     // default menu
+                case MTIME:     // default menu
                     cli();   // Disable all interrupts
-                    if(testbit(Key,K1)) {    // Next Channel
+                    if(testbit(Buttons,K1)) {    // Next Channel
                         // Trigger is Single -> Enable one more trace
                         if(testbit(Trigger, single)) {
                             Index=0;
@@ -1092,9 +1169,9 @@ void MSO(void) {
                             }
                         }
                     }
-                    if(testbit(Key,K2) && testbit(Key,K3)) M.HPos = 64;
+                    if(testbit(Buttons,K2) && testbit(Buttons,K3)) M.HPos = 64;
                     else {
-                        if(testbit(Key,K2)) {    // Sampling rate
+                        if(testbit(Buttons,K2)) {    // Sampling rate
                             if(!testbit(MStatus,stop)) {
                                 if(Srate<21) Srate++;
                                 else Srate=21;
@@ -1105,11 +1182,11 @@ void MSO(void) {
                                 } while (++i);
                                 setbit(Misc, redraw);
                                 Index=0;
-                                TCE0.INTCTRLA = 0;
+                                TCE1.INTCTRLA = 0;
                                 clrbit(MStatus,triggered);
                             }
                         }
-                        if(testbit(Key,K3)) {    // Sampling rate
+                        if(testbit(Buttons,K3)) {    // Sampling rate
                             if(!testbit(MStatus,stop)) {
                                 if(Srate) Srate--;
                                 uint8_t i=0; do {
@@ -1119,7 +1196,7 @@ void MSO(void) {
                                 } while (++i);
                                 setbit(Misc, redraw);
                                 Index=0;
-                                TCE0.INTCTRLA = 0;
+                                TCE1.INTCTRLA = 0;
                                 clrbit(MStatus,triggered);
                             }
                         }
@@ -1128,8 +1205,8 @@ void MSO(void) {
                 break;
                 case MCH1:     // Channel 1 menu
                     setbit(Misc, redraw);                
-                    if(testbit(Key,K1)) togglebit(CH1ctrl,chon);    // Channel 1 on/off
-                    if(testbit(Key,K2)) {    // Less gain
+                    if(testbit(Buttons,K1)) togglebit(CH1ctrl,chon);    // Channel 1 on/off
+                    if(testbit(Buttons,K2)) {    // Less gain
                         if(M.CH1gain) {
                             M.CH1gain--;
                             uint8_t i=0; do {   // resize
@@ -1137,7 +1214,7 @@ void MSO(void) {
                             } while (++i);
                         }
                     }
-                    if(testbit(Key, K3)) {    // More gain
+                    if(testbit(Buttons, K3)) {    // More gain
                         if(M.CH1gain<6) {
                             M.CH1gain++;
                             uint8_t i=0; do {   // resize
@@ -1148,8 +1225,8 @@ void MSO(void) {
                 break;
                 case MCH2:                     // Channel 2 menu
                     setbit(Misc, redraw);                
-                    if(testbit(Key,K1)) togglebit(CH2ctrl,chon);    // Channel 2 on/off
-                    if(testbit(Key,K2)) {    // Less gain
+                    if(testbit(Buttons,K1)) togglebit(CH2ctrl,chon);    // Channel 2 on/off
+                    if(testbit(Buttons,K2)) {    // Less gain
                         if(M.CH2gain) {
                             M.CH2gain--;
                             uint8_t i=0; do {   // resize
@@ -1157,7 +1234,7 @@ void MSO(void) {
                             } while (++i);
                         }
                     }
-                    if(testbit(Key,K3)) {    // More gain
+                    if(testbit(Buttons,K3)) {    // More gain
                         if(M.CH2gain<6) {
                             M.CH2gain++;
                             uint8_t i=0; do {   // resize
@@ -1167,17 +1244,17 @@ void MSO(void) {
                     }
                 break;
                 case MCHD:                     // Logic Analyzer menu
-                    if(testbit(Key,K1)) togglebit(CHDctrl,chon);   // Logic on/off
-                    if(testbit(Key,K2)) Menu = MCHDSEL1;            // Bit Select
-                    if(testbit(Key,K3)) Menu = MPROTOCOL;           // Protocol Sniffer
+                    if(testbit(Buttons,K1)) togglebit(CHDctrl,chon);   // Logic on/off
+                    if(testbit(Buttons,K2)) Menu = MCHDSEL1;            // Bit Select
+                    if(testbit(Buttons,K3)) Menu = MPROTOCOL;           // Protocol Sniffer
                 break;
                 case MSNIFFER:      // Sniffer mode
-                    if(testbit(Key,K1)) clrbit(Mcursors, singlesniff);    // Normal buffer
-                    if(testbit(Key,K2)) setbit(Mcursors, singlesniff);    // Single buffer
-                    if(testbit(Key,K3)) togglebit(Trigger, round);   // Circular buffer
+                    if(testbit(Buttons,K1)) clrbit(Mcursors, singlesniff);    // Normal buffer
+                    if(testbit(Buttons,K2)) setbit(Mcursors, singlesniff);    // Single buffer
+                    if(testbit(Buttons,K3)) togglebit(Trigger, round);   // Circular buffer
                 break;
                 case MTRIGTYPE:     // Trigger Type
-                    if(testbit(Key,K1)) {    // Trigger Normal
+                    if(testbit(Buttons,K1)) {    // Trigger Normal
                         if(testbit(Trigger, normal) && !testbit(Trigger, single)) {
                             clrbit(Trigger, normal);
                         } else {
@@ -1187,13 +1264,13 @@ void MSO(void) {
                         }
                         clrbit(MStatus, stop);
                     }
-                    if(testbit(Key,K2)) {    // Trigger Single
+                    if(testbit(Buttons,K2)) {    // Trigger Single
                         clrbit(Trigger, autotrg);
                         setbit(Trigger, normal);
                         setbit(Trigger, single);
                         clrbit(MStatus, stop);
                     }
-                    if(testbit(Key,K3)) {    // Trigger Auto
+                    if(testbit(Buttons,K3)) {    // Trigger Auto
                         if(testbit(Trigger, autotrg)) {
                             clrbit(Trigger, autotrg);
                         } else {
@@ -1205,7 +1282,7 @@ void MSO(void) {
                     }
                 break;
                 case MCURSOR1:     // Cursor menu
-                    if(testbit(Key,K1)) {    // Vertical Cursors
+                    if(testbit(Buttons,K1)) {    // Vertical Cursors
                         if(testbit(Mcursors, cursorv)) {
                             clrbit(Mcursors, cursorv);
                         }
@@ -1214,14 +1291,14 @@ void MSO(void) {
                             Menu = MVC1;
                         }
                     }
-                    if(testbit(Key,K2)) {    // CH1 Horizontal Cursors
+                    if(testbit(Buttons,K2)) {    // CH1 Horizontal Cursors
                         togglebit(Mcursors, cursorh1);
                         if(testbit(Mcursors, cursorh1)) {
                             clrbit(Mcursors, cursorh2);
                             Menu = MCH1HC1;
                         }
                     }
-                    if(testbit(Key,K3)) {    // CH2 Horizontal Cursors
+                    if(testbit(Buttons,K3)) {    // CH2 Horizontal Cursors
                         togglebit(Mcursors, cursorh2);
                         if(testbit(Mcursors, cursorh2)) {
                             clrbit(Mcursors, cursorh1);
@@ -1230,7 +1307,7 @@ void MSO(void) {
                     }
                 break;
                 case MWINDOW:     // Spectrum Analyzer menu
-                    if(testbit(Key,K1)) {    // Use Hamming Window
+                    if(testbit(Buttons,K1)) {    // Use Hamming Window
 						if(testbit(MFFT,hamming)) clrbit(MFFT,hamming);
                         else {
                             setbit(MFFT, hamming);
@@ -1238,7 +1315,7 @@ void MSO(void) {
                             clrbit(MFFT, blackman);
                         }
                     }
-                    if(testbit(Key,K2)) {    // Use Hann Window
+                    if(testbit(Buttons,K2)) {    // Use Hann Window
 						if(testbit(MFFT,hann)) clrbit(MFFT,hann);
                         else {
                             clrbit(MFFT, hamming);
@@ -1246,7 +1323,7 @@ void MSO(void) {
                             clrbit(MFFT, blackman);
                         }
                     }
-                    if(testbit(Key,K3)) {    // Use Cosine Window
+                    if(testbit(Buttons,K3)) {    // Use Cosine Window
 						if(testbit(MFFT,blackman)) clrbit(MFFT,blackman);
                         else {
                             clrbit(MFFT, hamming);
@@ -1256,36 +1333,36 @@ void MSO(void) {
                     }
                 break;
                 case MSOURCE:     // Trigger Source
-                    if(testbit(Key,K1)) {    // Trigger source is CH1
+                    if(testbit(Buttons,K1)) {    // Trigger source is CH1
                         M.Tsource = 0;
                         if(testbit(Trigger,window)) Menu=MTW1;
                         else Menu= MTLEVEL;
                     }
-                    if(testbit(Key,K2)) {    // Trigger source is CH2
+                    if(testbit(Buttons,K2)) {    // Trigger source is CH2
                         M.Tsource = 1;
                         if(testbit(Trigger,window)) Menu=MTW1;
                         else Menu= MTLEVEL;
                     }
-                    if(testbit(Key,K3)) Menu = MTSEL1;  // Trigger source is LOGIC
+                    if(testbit(Buttons,K3)) Menu = MTSEL1;  // Trigger source is LOGIC
                 break;
                 case MDISPLAY1:     // More Display Options
-                    if(testbit(Key,K1)) {    // Grid type
+                    if(testbit(Buttons,K1)) {    // Grid type
                         if(testbit(Display,grid0)) togglebit(Display,grid1);
                         togglebit(Display,grid0);
                     }
-                    if(testbit(Key,K2)) togglebit(Display, flip);    // Flip Display
-                    if(testbit(Key,K3)) togglebit(Display,disp_inv);    // Invert
+                    //if(testbit(Buttons,K2))
+                    //if(testbit(Buttons,K3))
                 break;
                 case MMETER:     // Voltmeter menu
-                    if(testbit(Key,K1)) {       // VDC
+                    if(testbit(Buttons,K1)) {       // VDC
                         setbit(MStatus,vdc);
                         clrbit(MStatus,vp_p);
                     }
-                    if(testbit(Key,K2)) {       // VPP
+                    if(testbit(Buttons,K2)) {       // VPP
                         clrbit(MStatus,vdc);
                         setbit(MStatus,vp_p);
                     }
-                    if(testbit(Key,K3)) {       // FREQUENCY / COUNTER
+                    if(testbit(Buttons,K3)) {       // FREQUENCY / COUNTER
                         if(!testbit(MStatus,vdc) && !testbit(MStatus,vp_p)) {
                             setbit(MStatus,vdc);
                             setbit(MStatus,vp_p);
@@ -1297,47 +1374,47 @@ void MSO(void) {
                     }
                 break;
                 case MAWG:    // AWG Control
-                    if(testbit(Key,K1)) M.AWGtype = 1; // Sine
-                    if(testbit(Key,K2)) M.AWGtype = 2; // Square
-                    if(testbit(Key,K3)) M.AWGtype = 3; // Triangle
+                    if(testbit(Buttons,K1)) M.AWGtype = 1; // Sine
+                    if(testbit(Buttons,K2)) M.AWGtype = 2; // Square
+                    if(testbit(Buttons,K3)) M.AWGtype = 3; // Triangle
                     setbit(MStatus, updateawg);
                 break;
                 case MCH1OPT:    // CH1 Menu 2
-                    if(testbit(Key,K1)) Menu = MCH1POS;  // CH1 Position
-                    if(testbit(Key,K2)) {   // Invert Channel
+                    if(testbit(Buttons,K1)) Menu = MCH1POS;  // CH1 Position
+                    if(testbit(Buttons,K2)) {   // Invert Channel
                         togglebit(CH1ctrl,chinvert);
                         setbit(Misc, redraw);
                     }
-                    if(testbit(Key,K3)) Menu = MCH1MATH;    // Math
+                    if(testbit(Buttons,K3)) Menu = MCH1MATH;    // Math
                 break;
                 case MCH2OPT:    // CH2 Menu 2
-                    if(testbit(Key,K1)) Menu=MCH2POS;   // CH2 Position
-                    if(testbit(Key,K2)) {   // Invert Channel
+                    if(testbit(Buttons,K1)) Menu=MCH2POS;   // CH2 Position
+                    if(testbit(Buttons,K2)) {   // Invert Channel
                         togglebit(CH2ctrl,chinvert);
                         setbit(Misc, redraw);
                     }
-                    if(testbit(Key,K3)) Menu=MCH2MATH;  // Math
+                    if(testbit(Buttons,K3)) Menu=MCH2MATH;  // Math
                 break;
                 case MCHDOPT1:    // Logic Analyzer Options
-                    if(testbit(Key,K1)) M.CHDpos+=8;              // Logic Position
-                    if(testbit(Key,K2)) togglebit(CHDctrl,chinvert);    // Invert Channel
-                    if(testbit(Key,K3)) togglebit(CHDctrl,low);         // Thick line when logic '0'
+                    if(testbit(Buttons,K1)) M.CHDpos+=8;              // Logic Position
+                    if(testbit(Buttons,K2)) togglebit(CHDctrl,chinvert);    // Invert Channel
+                    if(testbit(Buttons,K3)) togglebit(CHDctrl,low);         // Thick line when logic '0'
                 break;
                 case MMAIN1:     // Menu Select 1: Channel
-                    if(testbit(Key,K1)) Menu = MCH1;     // CH1
-                    if(testbit(Key,K2)) Menu = MCH2;     // CH2
-                    if(testbit(Key,K3)) Menu = MCHD;     // LOGIC
+                    if(testbit(Buttons,K1)) Menu = MCH1;     // CH1
+                    if(testbit(Buttons,K2)) Menu = MCH2;     // CH2
+                    if(testbit(Buttons,K3)) Menu = MCHD;     // LOGIC
                 break;
                 case MMAIN2:     // Menu Select 2: Trigger
-                    if(testbit(Key,K1)) Menu = MTRIGTYPE;   // Trigger Type
-                    if(testbit(Key,K2)) Menu = MSOURCE;     // Trigger Source
-                    if(testbit(Key,K3)) Menu = MTRIG2;      // Post Trigger
+                    if(testbit(Buttons,K1)) Menu = MTRIGTYPE;   // Trigger Type
+                    if(testbit(Buttons,K2)) Menu = MSOURCE;     // Trigger Source
+                    if(testbit(Buttons,K3)) Menu = MTRIG2;      // Post Trigger
                 break;
                 case MMAIN3:     // Menu Select 3: Mode
                     // Check Tactile Switches
         		    if(MFFT<0x20) RestorefromMeter();
 					uint8_t oldMFFT=MFFT;
-                    if(testbit(Key,K1) && testbit(Key,K3)) { // Scope or XY + FFT
+                    if(testbit(Buttons,K1) && testbit(Buttons,K3)) { // Scope or XY + FFT
                         if(testbit(MFFT,xymode)) {
                             clrbit(MFFT,scopemode);
                             setbit(MFFT,xymode);
@@ -1348,10 +1425,10 @@ void MSO(void) {
                             clrbit(MFFT,xymode);
                             setbit(MFFT,fftmode);
                         }
-                        while(Key);
+                        while(Buttons);
                     }
                     else {
-                        if(testbit(Key,K1)) {   // Set Scope mode
+                        if(testbit(Buttons,K1)) {   // Set Scope mode
                             if(testbit(MFFT,fftmode) || !testbit(MFFT,xymode)) {
                                 setbit(MFFT,scopemode);
                                 clrbit(MFFT,xymode);
@@ -1359,13 +1436,13 @@ void MSO(void) {
                             }
                             Menu=MSCOPEOPT;
                         }
-                        if(testbit(Key,K2)) {   // Set Meter mode
+                        if(testbit(Buttons,K2)) {   // Set Meter mode
                             clrbit(MFFT,scopemode);
                             clrbit(MFFT,xymode);
                             clrbit(MFFT,fftmode);
                             Menu=MMETER;
                         }
-                        if(testbit(Key,K3)) {   // Set FFT mode
+                        if(testbit(Buttons,K3)) {   // Set FFT mode
                             clrbit(MFFT,scopemode);
                             clrbit(MFFT,xymode);
                             setbit(MFFT,fftmode);
@@ -1376,35 +1453,35 @@ void MSO(void) {
                     if(oldMFFT!=MFFT) setbit(Misc,redraw);    // Mode changed
                 break;
                 case MMAIN4:     // Menu Select 4: FFT
-                    if(testbit(Key,K1)) togglebit(MFFT, iqfft);     // Set IQ FFT
-                    if(testbit(Key,K2)) Menu=MWINDOW;               // FFT Window Menu
-                    if(testbit(Key,K3)) togglebit(MFFT, uselog);    // Use logarithmic display
+                    if(testbit(Buttons,K1)) togglebit(MFFT, iqfft);     // Set IQ FFT
+                    if(testbit(Buttons,K2)) Menu=MWINDOW;               // FFT Window Menu
+                    if(testbit(Buttons,K3)) togglebit(MFFT, uselog);    // Use logarithmic display
                 break;
                 case MMAIN5:     // Menu Select 5: Miscellaneous
-                    if(testbit(Key,K1)) Menu=MCURSOR1;       // Cursors
-                    if(testbit(Key,K2)) Menu=MDISPLAY2;      // Display Menu
-                    if(testbit(Key,K3)) Menu=MAWG2;          // AWG Menu
+                    if(testbit(Buttons,K1)) Menu=MCURSOR1;       // Cursors
+                    if(testbit(Buttons,K2)) Menu=MDISPLAY2;      // Display Menu
+                    if(testbit(Buttons,K3)) Menu=MAWG2;          // AWG Menu
                 break;
                 case MAWG2:     // AWG Menu 2
-                    if(testbit(Key,K1)) Menu = MAWG;         // Waveform Type
-                    if(testbit(Key,K2)) Menu = MAWG6;        // Go to Advanced Settings
-                    if(testbit(Key,K3)) Menu = MAWGFREQ;     // Frequency
+                    if(testbit(Buttons,K1)) Menu = MAWG;         // Waveform Type
+                    if(testbit(Buttons,K2)) Menu = MAWG6;        // Go to Advanced Settings
+                    if(testbit(Buttons,K3)) Menu = MAWGFREQ;     // Frequency
                 break;
                 case MAWG4:     // AWG Menu 4
-                    if(testbit(Key,K1)) M.AWGtype = 4;  // Exponential
-                    if(testbit(Key,K2)) M.AWGtype = 0;  // Noise
-                    if(testbit(Key,K3)) M.AWGtype = 5;  // Custom
+                    if(testbit(Buttons,K1)) M.AWGtype = 4;  // Exponential
+                    if(testbit(Buttons,K2)) M.AWGtype = 0;  // Noise
+                    if(testbit(Buttons,K3)) M.AWGtype = 5;  // Custom
                     setbit(MStatus, updateawg);
                 break;
                 case MAWG5:     // AWG Menu 5
-                    if(testbit(Key,K1)) Menu=MSWSPEED;   // Sweep Menu
-                    if(testbit(Key,K2)) Menu=MSWMODE;    // Sweep Mode Menu
-                    if(testbit(Key,K3)) Menu=MSW1;       // Range Menu
+                    if(testbit(Buttons,K1)) Menu=MSWSPEED;   // Sweep Menu
+                    if(testbit(Buttons,K2)) Menu=MSWMODE;    // Sweep Mode Menu
+                    if(testbit(Buttons,K3)) Menu=MSW1;       // Range Menu
                 break;
                 case MAWG6:     // AWG Menu 6
-                    if(testbit(Key,K1)) togglebit(Sweep,SweepF);    // Toggle F sweep
-                    if(testbit(Key,K2)) togglebit(Sweep,SweepA);    // Toggle A sweep
-                    if(testbit(Key,K3)) togglebit(Sweep,SweepD);    // Toggle D sweep
+                    if(testbit(Buttons,K1)) togglebit(Sweep,SweepF);    // Toggle F sweep
+                    if(testbit(Buttons,K2)) togglebit(Sweep,SweepA);    // Toggle A sweep
+                    if(testbit(Buttons,K3)) togglebit(Sweep,SweepD);    // Toggle D sweep
                 break;
 /*                case MAWG7:     // AWG Menu 7
                     if(testbit(Key,KA)) Menu = MAWG6;   // Go to Sweep menu
@@ -1417,15 +1494,15 @@ void MSO(void) {
                     togglebit(MStatus,AWGPositive);     // Positive Range*/
                 break;
                 case MSCOPEOPT:
-                    if(testbit(Key,K1)) {   // Roll
+                    if(testbit(Buttons,K1)) {   // Roll
                         togglebit(Mcursors,roll);
                         if(testbit(Mcursors,roll)) clrbit(Display,elastic);
                     }
-                    if(testbit(Key,K2)) {   // Elastic
+                    if(testbit(Buttons,K2)) {   // Elastic
                         togglebit(Display, elastic);
                         if(testbit(Display,elastic)) clrbit(Mcursors,roll);
                     }
-                    if(testbit(Key,K3)) {   // Toggle XY Mode
+                    if(testbit(Buttons,K3)) {   // Toggle XY Mode
                         setbit(Misc, redraw);
                         if(testbit(MFFT,xymode)) {
                             setbit(MFFT,scopemode);
@@ -1438,12 +1515,12 @@ void MSO(void) {
                     }
                 break;
                 case MTRIG2: // Trigger edge and mode
-                    if(testbit(Key,K1)) Menu = MTRIGMODE;    // Trigger mode
-                    if(testbit(Key,K2)) Menu = MPOSTT;       // Post trigger menu
-                    if(testbit(Key,K3)) Menu = MTHOLD;       // Trigger holdoff menu
+                    if(testbit(Buttons,K1)) Menu = MTRIGMODE;    // Trigger mode
+                    if(testbit(Buttons,K2)) Menu = MPOSTT;       // Post trigger menu
+                    if(testbit(Buttons,K3)) Menu = MTHOLD;       // Trigger holdoff menu
                 break;
                 case MTRIGMODE: // Trigger mode
-                    if(testbit(Key,K1)) {   // Set Window Mode
+                    if(testbit(Buttons,K1)) {   // Set Window Mode
 						if(testbit(Trigger,window)) clrbit(Trigger,window);
 						else {
     						clrbit(Trigger, edge);
@@ -1451,7 +1528,7 @@ void MSO(void) {
     						setbit(Trigger, window);
 						}
                     }
-                    if(testbit(Key,K2)) {   // Set Edge Mode
+                    if(testbit(Buttons,K2)) {   // Set Edge Mode
 						if(testbit(Trigger,edge)) clrbit(Trigger,edge);
 						else {
     						setbit(Trigger, edge);
@@ -1459,7 +1536,7 @@ void MSO(void) {
     						clrbit(Trigger, window);
 						}
                     }
-                    if(testbit(Key,K3)) {   // Set Slope Mode
+                    if(testbit(Buttons,K3)) {   // Set Slope Mode
 						if(testbit(Trigger,slope)) clrbit(Trigger,slope);
 						else {
     						clrbit(Trigger, edge);
@@ -1469,112 +1546,108 @@ void MSO(void) {
                     }
                 break;
                 case MCURSOR2:     // More Cursors Options
-                    if(testbit(Key,K1)) togglebit(Mcursors, autocur);   // Auto Cursors
-                    if(testbit(Key,K2)) togglebit(Mcursors, track);     // Track Vertical Cursors
-                    if(testbit(Key,K3)) {   // Show Reference
+                    if(testbit(Buttons,K1)) togglebit(Mcursors, autocur);   // Auto Cursors
+                    if(testbit(Buttons,K2)) togglebit(Mcursors, track);     // Track Vertical Cursors
+                    if(testbit(Buttons,K3)) {   // Show Reference
                         togglebit(Mcursors, reference);
                         if(testbit(Mcursors, reference)) {
                             // Save waveform to EEPROM
                             tiny_printp(50,4,PSTR("SAVING...")); dma_display();
-                            i=0;
+                            eeprom_write_byte(&EECH1Pos, M.CH1pos);
+                            eeprom_write_byte(&EECH2Pos, M.CH2pos);
+                            eeprom_write_byte(&EEHPos, M.HPos);
+                            uint8_t i=0;
                             do {     // Apply position
-                                uint8_t eech1,eech2;
-                                eech1=addwsat(DC.CH1data[i],M.CH1pos);
-                                eech1=eech1>>1; // Scale to LCD (128x64)
-                                if(eech1>=64) eech1=63;
-                                eech2=addwsat(DC.CH2data[i],M.CH2pos);
-                                eech2=eech2>>1; // Scale to LCD (128x64)
-                                if(eech2>=64) eech2=63;
-                                eeprom_write_byte(&EECHREF1[i], eech1);
-                                eeprom_write_byte(&EECHREF2[i], eech2);
+                                eeprom_write_byte(&EECHREF1[i], DC.CH1data[i]);
+                                eeprom_write_byte(&EECHREF2[i], DC.CH2data[i]);
                             } while(++i);
                         }
                     }
                 break;
                 case MCHDSEL1:     // Logic bit select
                     M.CHDpos = 0;
-                    if(testbit(Key,K1)) {   // Select All / None
+                    if(testbit(Buttons,K1)) {   // Select All / None
                         if(CHDmask==0xFF) CHDmask=0;
                         else CHDmask = 0xFF;
                     }
-                    if(testbit(Key,K2)) togglebit(CHDmask, 0);
-                    if(testbit(Key,K3)) togglebit(CHDmask, 1);
+                    if(testbit(Buttons,K2)) togglebit(CHDmask, 0);
+                    if(testbit(Buttons,K3)) togglebit(CHDmask, 1);
                 break;
                 case MCHDSEL2:     // Logic bit select
                     M.CHDpos = 0;
-                    if(testbit(Key,K1)) togglebit(CHDmask, 2);
-                    if(testbit(Key,K2)) togglebit(CHDmask, 3);
-                    if(testbit(Key,K3)) togglebit(CHDmask, 4);
+                    if(testbit(Buttons,K1)) togglebit(CHDmask, 2);
+                    if(testbit(Buttons,K2)) togglebit(CHDmask, 3);
+                    if(testbit(Buttons,K3)) togglebit(CHDmask, 4);
                 break;
                 case MCHDSEL3:     // Logic bit select
                     M.CHDpos = 0;
-                    if(testbit(Key,K1)) togglebit(CHDmask, 5);
-                    if(testbit(Key,K2)) togglebit(CHDmask, 6);
-                    if(testbit(Key,K3)) togglebit(CHDmask, 7);
+                    if(testbit(Buttons,K1)) togglebit(CHDmask, 5);
+                    if(testbit(Buttons,K2)) togglebit(CHDmask, 6);
+                    if(testbit(Buttons,K3)) togglebit(CHDmask, 7);
                 break;
                 case MTSEL1:     // Digital Trigger source
-                    if(testbit(Key,K1)) M.Tsource = 10;    // External Trigger
-                    if(testbit(Key,K2)) M.Tsource = 2;     // 0
-                    if(testbit(Key,K3)) M.Tsource = 3;     // 1
-                    if(!testbit(Key,KM) && (oldsource==M.Tsource)) togglebit(Trigger, trigdir);
+                    if(testbit(Buttons,K1)) M.Tsource = 10;    // External Trigger
+                    if(testbit(Buttons,K2)) M.Tsource = 2;     // 0
+                    if(testbit(Buttons,K3)) M.Tsource = 3;     // 1
+                    if(!testbit(Buttons,KBL) && (oldsource==M.Tsource)) togglebit(Trigger, trigdir);
                 break;
                 case MTSEL2:     // Digital Trigger source
-                    if(testbit(Key,K1)) M.Tsource = 4;     // 2
-                    if(testbit(Key,K2)) M.Tsource = 5;     // 3
-                    if(testbit(Key,K3)) M.Tsource = 6;     // 4
-                    if(!testbit(Key,KM) && (oldsource==M.Tsource)) togglebit(Trigger, trigdir);                    
+                    if(testbit(Buttons,K1)) M.Tsource = 4;     // 2
+                    if(testbit(Buttons,K2)) M.Tsource = 5;     // 3
+                    if(testbit(Buttons,K3)) M.Tsource = 6;     // 4
+                    if(!testbit(Buttons,KBL) && (oldsource==M.Tsource)) togglebit(Trigger, trigdir);                    
                 break;
                 case MTSEL3:     // Digital Trigger source
-                    if(testbit(Key,K1)) M.Tsource = 7;     // 5
-                    if(testbit(Key,K2)) M.Tsource = 8;     // 6
-                    if(testbit(Key,K3)) M.Tsource = 9;     // 7
-                    if(!testbit(Key,KM) && (oldsource==M.Tsource)) togglebit(Trigger, trigdir);                    
+                    if(testbit(Buttons,K1)) M.Tsource = 7;     // 5
+                    if(testbit(Buttons,K2)) M.Tsource = 8;     // 6
+                    if(testbit(Buttons,K3)) M.Tsource = 9;     // 7
+                    if(!testbit(Buttons,KBL) && (oldsource==M.Tsource)) togglebit(Trigger, trigdir);                    
                 break;
                 case MCHDOPT2:                     // Logic Options 2
-                    if(testbit(Key,K1)) togglebit(CHDctrl,hexp);     // Parallel
-                    if(testbit(Key,K2)) togglebit(CHDctrl,hexs);     // Serial
-                    if(testbit(Key,K3)) Menu=MCHDPULL;               // Pull Resistors
+                    if(testbit(Buttons,K1)) togglebit(CHDctrl,hexp);     // Parallel
+                    if(testbit(Buttons,K2)) togglebit(CHDctrl,hexs);     // Serial
+                    if(testbit(Buttons,K3)) Menu=MCHDPULL;               // Pull Resistors
                 break;
                 case MPROTOCOL:                     // Protocol Decoding
-                    if(testbit(Key,K1)) {   // I2C
+                    if(testbit(Buttons,K1)) {   // I2C
 						M.CHDdecode = i2c;
                         Menu=MSNIFFER;
                     }
-                    if(testbit(Key,K2)) {   // UART
+                    if(testbit(Buttons,K2)) {   // UART
 						M.CHDdecode = rs232;
                         Menu=MUART;
                     }
-                    if(testbit(Key,K3)) {   // SPI
+                    if(testbit(Buttons,K3)) {   // SPI
 						M.CHDdecode = spi;
                         Menu=MSPI;
                     }
                 break;
                 case MCHDPULL:     // Logic Input Pull
-                    if(testbit(Key,K1)) clrbit(CHDctrl,pull);   // No Pull
-                    if(testbit(Key,K2)) {   // Pull Up
+                    if(testbit(Buttons,K1)) clrbit(CHDctrl,pull);   // No Pull
+                    if(testbit(Buttons,K2)) {   // Pull Up
                         setbit(CHDctrl,pull);
                         setbit(CHDctrl,pullup);
                     }
-                    if(testbit(Key,K3)) {   // Pull Down
+                    if(testbit(Buttons,K3)) {   // Pull Down
                         setbit(CHDctrl,pull);
                         clrbit(CHDctrl,pullup);
                     }
                 break;
                 case MDISPLAY2:     // Display menu
-                    if(testbit(Key,K1)) {   // Persistent mode
+                    if(testbit(Buttons,K1)) {   // Persistent mode
                         togglebit(Display, persistent);
                         //if(!testbit(Mcursors,roll)) Index=0;
                     }
-                    if(testbit(Key,K2)) togglebit(Display, line);        // Line mode
-                    if(testbit(Key,K3)) togglebit(Display, showset);     // Show channel settings
+                    if(testbit(Buttons,K2)) togglebit(Display, line);        // Line mode
+                    if(testbit(Buttons,K3)) togglebit(Display, showset);     // Show channel settings
                 break;
                 case MSPI:    // SPI Menu
-                    if(testbit(Key,K1)) togglebit(Sniffer,CPOL);        // Toggle CPOL
-                    if(testbit(Key,K2)) togglebit(Sniffer,CPHA);        // Toggle CPHA
-                    if(testbit(Key,K3)) togglebit(Sniffer,SSINV);        // Toggle CPHA
+                    if(testbit(Buttons,K1)) togglebit(Sniffer,CPOL);        // Toggle CPOL
+                    if(testbit(Buttons,K2)) togglebit(Sniffer,CPHA);        // Toggle CPHA
+                    if(testbit(Buttons,K3)) togglebit(Sniffer,SSINV);        // Toggle CPHA
                 break;
                 case MCH1MATH:    // Channel 1 math
-                    if(testbit(Key,K1)) {   // Subtract
+                    if(testbit(Buttons,K1)) {   // Subtract
                         if(testbit(CH1ctrl,chmath)) {
                             togglebit(CH1ctrl,submult);
                             if(!testbit(CH1ctrl,submult)) clrbit(CH1ctrl,chmath);
@@ -1584,7 +1657,7 @@ void MSO(void) {
                             setbit(CH1ctrl,submult);
                         }
                     }
-                    if(testbit(Key,K2)) {   // Multiply
+                    if(testbit(Buttons,K2)) {   // Multiply
                         if(testbit(CH1ctrl,chmath)) {
                             togglebit(CH1ctrl,submult);
                             if(testbit(CH1ctrl,submult)) clrbit(CH1ctrl,chmath);
@@ -1594,10 +1667,10 @@ void MSO(void) {
                             clrbit(CH1ctrl,submult);
                         }
                     }
-                    if(testbit(Key,K3)) togglebit(CH1ctrl,chaverage);   // Average
+                    if(testbit(Buttons,K3)) togglebit(CH1ctrl,chaverage);   // Average
                 break;
                 case MCH2MATH:    // Channel 2 math
-                    if(testbit(Key,K1)) {   // Subtract
+                    if(testbit(Buttons,K1)) {   // Subtract
                         if(testbit(CH2ctrl,chmath)) {
                             togglebit(CH2ctrl,submult);
                             if(!testbit(CH2ctrl,submult)) clrbit(CH2ctrl,chmath);
@@ -1607,7 +1680,7 @@ void MSO(void) {
                             setbit(CH2ctrl,submult);
                         }
                     }
-                    if(testbit(Key,K2)) {   // Multiply
+                    if(testbit(Buttons,K2)) {   // Multiply
                         if(testbit(CH2ctrl,chmath)) {
                             togglebit(CH2ctrl,submult);
                             if(testbit(CH2ctrl,submult)) clrbit(CH2ctrl,chmath);
@@ -1617,17 +1690,17 @@ void MSO(void) {
                             clrbit(CH2ctrl,submult);
                         }
                     }
-                    if(testbit(Key,K3)) togglebit(CH2ctrl,chaverage);   // Average
+                    if(testbit(Buttons,K3)) togglebit(CH2ctrl,chaverage);   // Average
                 break;
                 case MAWG3:     // AWG Menu 3
-                    if(testbit(Key,K1)) Menu=MAWGAMP;    // Amplitude
-                    if(testbit(Key,K2)) Menu=MAWGDUTY;   // Duty Cycle
-                    if(testbit(Key,K3)) Menu=MAWGOFF;    // Offset
+                    if(testbit(Buttons,K1)) Menu=MAWGAMP;    // Amplitude
+                    if(testbit(Buttons,K2)) Menu=MAWGDUTY;   // Duty Cycle
+                    if(testbit(Buttons,K3)) Menu=MAWGOFF;    // Offset
                 break;
                 case MSWMODE:
-                    if(testbit(Key,K1)) togglebit(Sweep,swdown);    // Sweep direction
-                    if(testbit(Key,K2)) togglebit(Sweep,pingpong);   // Ping Pong
-                    if(testbit(Key,K3)) {   // Accelerate up or accelerate down
+                    if(testbit(Buttons,K1)) togglebit(Sweep,swdown);    // Sweep direction
+                    if(testbit(Buttons,K2)) togglebit(Sweep,pingpong);   // Ping Pong
+                    if(testbit(Buttons,K3)) {   // Accelerate up or accelerate down
                         if(testbit(Sweep,SWAccel) && testbit(Sweep, SWAcceldir)) {
                             clrbit(Sweep,SWAccel);
                             clrbit(Sweep, SWAcceldir);
@@ -1637,7 +1710,7 @@ void MSO(void) {
                     }
                 break;
                 case MUART:    // Baud Rate Menu 1
-                    if(testbit(Key,K1)) {   // Change Baud Rate
+                    if(testbit(Buttons,K1)) {   // Change Baud Rate
                         uint8_t baud;
                         baud=Sniffer&0x1F;
                         baud++;
@@ -1645,7 +1718,7 @@ void MSO(void) {
                         Sniffer&=0xE0;
                         Sniffer|=baud;
                     }
-                    if(testbit(Key,K2)) {   // Parity
+                    if(testbit(Buttons,K2)) {   // Parity
                         if(!testbit(Sniffer,parmode)) {
                             setbit(Sniffer,parmode);
                             clrbit(Sniffer,parity);
@@ -1655,27 +1728,27 @@ void MSO(void) {
                             else clrbit(Sniffer,parmode);
                         }
                     }
-                    if(testbit(Key,K3)) togglebit(Sniffer,stopbit);    // Stop Bits
+                    if(testbit(Buttons,K3)) togglebit(Sniffer,stopbit);    // Stop Bits
                 break;
                 case MPOSTT:
                     Tpost = M.Tpost;
-                    if(testbit(Key,K1)) {   // Shortcut values
+                    if(testbit(Buttons,K1)) {   // Shortcut values
                         if(Tpost == 128) Tpost = 256;
                         else if(Tpost == 256) Tpost = 0;
                         else Tpost = 128;
                     }
-                    if(testbit(Key,K2)) { if(Tpost) Tpost--; }
-                    if(testbit(Key,K3)) Tpost++;
+                    if(testbit(Buttons,K2)) { if(Tpost) Tpost--; }
+                    if(testbit(Buttons,K3)) Tpost++;
                     M.Tpost=Tpost;
                     CheckPost();
                 break;
                 case MAWGFREQ:     // Frequency
-                    if(testbit(Key,K1)) moveF();    // Shortcuts: 10KHz, 1KHz, 100Hz, 10Hz, 1Hz
-                    if(testbit(Key,K2)) {
+                    if(testbit(Buttons,K1)) moveF();    // Shortcuts: 10KHz, 1KHz, 100Hz, 10Hz, 1Hz
+                    if(testbit(Buttons,K2)) {
                         setbit(Misc, negative);    // decrease
                         moveF();
                     }
-                    if(testbit(Key,K3)) {
+                    if(testbit(Buttons,K3)) {
                         setbit(Misc, bigfont);      // increase
                         moveF();
                     }
@@ -1684,7 +1757,7 @@ void MSO(void) {
                     setbit(MStatus, updateawg);
                 break;
                 case MTLEVEL:     // Trigger Level
-                    if(testbit(Key,K1)) {   // Shortcut to 0V or average
+                    if(testbit(Buttons,K1)) {   // Shortcut to 0V or average
                         if(M.Tlevel==128) {
                             if(M.Tsource==0) {
                                 M.Tlevel = CH1.min + (CH1.vpp/2);
@@ -1697,148 +1770,136 @@ void MSO(void) {
                         }
                         else M.Tlevel=128;
                     }
-                    if(testbit(Key,K2)) {   // decrease
+                    if(testbit(Buttons,K2)) {   // decrease
                         if(M.Tlevel<255) M.Tlevel++;
                         setbit(Trigger,trigdir);
                     }
-                    if(testbit(Key,K3)) {  // increase
+                    if(testbit(Buttons,K3)) {  // increase
                         if(M.Tlevel) M.Tlevel--;
                         clrbit(Trigger,trigdir);
                     }
                 break;
                 case MTW1:     // Window Level 1
-                    if(testbit(Key,K1)) Menu=MTW2;    // Select Cursor
-                    if(testbit(Key,K2)) { if(M.Window1<254) M.Window1+=2; }
-                    if(testbit(Key,K3)) {
+                    if(testbit(Buttons,K1)) Menu=MTW2;    // Select Cursor
+                    if(testbit(Buttons,K2)) { if(M.Window1<254) M.Window1+=2; }
+                    if(testbit(Buttons,K3)) {
                         if(M.Window1) M.Window1--;
                         if(M.Window1) M.Window1--;
                     }
                 break;
                 case MTW2:     // Window Level 1
-                    if(testbit(Key,K1)) Menu=MTW1;    // Select Cursor
-                    if(testbit(Key,K2)) { if(M.Window2<254) M.Window2+=2; }
-                    if(testbit(Key,K3)) {
+                    if(testbit(Buttons,K1)) Menu=MTW1;    // Select Cursor
+                    if(testbit(Buttons,K2)) { if(M.Window2<254) M.Window2+=2; }
+                    if(testbit(Buttons,K3)) {
                         if(M.Window2) M.Window2--;
                         if(M.Window2) M.Window2--;
                     }
                 break;
                 case MSW1:     // Sweep start frequency
-                    if(testbit(Key,K1)) Menu=MSW2;    // Select Cursor
-                    if(testbit(Key,K2)) { if(M.Sweep1)     M.Sweep1--; }
-                    if(testbit(Key,K3)) { if(M.Sweep1<255) M.Sweep1++; }
+                    if(testbit(Buttons,K1)) Menu=MSW2;    // Select Cursor
+                    if(testbit(Buttons,K2)) { if(M.Sweep1)     M.Sweep1--; }
+                    if(testbit(Buttons,K3)) { if(M.Sweep1<255) M.Sweep1++; }
                 break;
                 case MSW2:     // Sweep end frequency
-                    if(testbit(Key,K1)) Menu=MSW1;    // Select Cursor
-                    if(testbit(Key,K2)) { if(M.Sweep2)     M.Sweep2--; }
-                    if(testbit(Key,K3)) { if(M.Sweep2<255) M.Sweep2++; }
+                    if(testbit(Buttons,K1)) Menu=MSW1;    // Select Cursor
+                    if(testbit(Buttons,K2)) { if(M.Sweep2)     M.Sweep2--; }
+                    if(testbit(Buttons,K3)) { if(M.Sweep2<255) M.Sweep2++; }
                 break;
                 case MHPOS:     // Stop - Horizontal Scroll
-                    if(testbit(Key,K2) && testbit(Key,K3)) M.HPos = 64;   // KB and KC pressed simultaneously
+                    if(testbit(Buttons,K2) && testbit(Buttons,K3)) M.HPos = 64;   // KB and KC pressed simultaneously
                     else {
-                        if(testbit(Key,K1)) {   // Start acquisition
+                        if(testbit(Buttons,K1)) {   // Start acquisition
                             clrbit(MStatus, stop);
-                            Menu=Mdefault;
+                            Menu=MTIME;
                         }
-                        if(testbit(Key,K2)) { if(M.HPos) M.HPos--; }
-                        if(testbit(Key,K3)) M.HPos++;
+                        if(testbit(Buttons,K2)) { if(M.HPos) M.HPos--; }
+                        if(testbit(Buttons,K3)) M.HPos++;
                     }
                 break;
                 case MSWSPEED:  // Sweep speed
-                    if(testbit(Key,K2)) { if(M.SWSpeed>1)    M.SWSpeed--; }
-                    if(testbit(Key,K3)) { if(M.SWSpeed<127)  M.SWSpeed++; }
+                    if(testbit(Buttons,K2)) { if(M.SWSpeed>1)    M.SWSpeed--; }
+                    if(testbit(Buttons,K3)) { if(M.SWSpeed<127)  M.SWSpeed++; }
                     AWGspeed=M.SWSpeed;
                 break;
                 case MAWGAMP:     // Amplitude
-                    if(testbit(Key,K2)) M.AWGamp++;   // Decrease
-                    if(testbit(Key,K3)) { if(M.AWGamp>-128) M.AWGamp--; }  // Increase
+                    if(testbit(Buttons,K2)) M.AWGamp++;   // Decrease
+                    if(testbit(Buttons,K3)) { if(M.AWGamp>-128) M.AWGamp--; }  // Increase
                     setbit(MStatus, updateawg);
                 break;
                 case MAWGOFF:     // Offset
-                    if(testbit(Key,K2)) { if(M.AWGoffset<127) M.AWGoffset++;  }   // decrease
-                    if(testbit(Key,K3)) { if(M.AWGoffset>-128) M.AWGoffset--; }   // increase
+                    if(testbit(Buttons,K2)) { if(M.AWGoffset<127) M.AWGoffset++;  }   // decrease
+                    if(testbit(Buttons,K3)) { if(M.AWGoffset>-128) M.AWGoffset--; }   // increase
                     setbit(MStatus, updateawg);
                 break;
                 case MAWGDUTY:     // Duty Cycle
-                    if(testbit(Key,K2)) { if(M.AWGduty>0)   M.AWGduty--; }    // decrease
-                    if(testbit(Key,K3)) { if(M.AWGduty<255) M.AWGduty++; }    // increase
+                    if(testbit(Buttons,K2)) { if(M.AWGduty>0)   M.AWGduty--; }    // decrease
+                    if(testbit(Buttons,K3)) { if(M.AWGduty<255) M.AWGduty++; }    // increase
                     setbit(MStatus, updateawg);
                 break;
                 case MTHOLD:
-                    if(testbit(Key,K2)) { if(M.Thold)     M.Thold--; }
-                    if(testbit(Key,K3)) { if(M.Thold<255) M.Thold++; }
+                    if(testbit(Buttons,K2)) { if(M.Thold)     M.Thold--; }
+                    if(testbit(Buttons,K3)) { if(M.Thold<255) M.Thold++; }
                 break;
                 case MCH1POS:     // CH1 Position
-                    if(testbit(Key,K2)) M.CH1pos+=2;
-                    if(testbit(Key,K3)) {
+                    if(testbit(Buttons,K2)) M.CH1pos+=2;
+                    if(testbit(Buttons,K3)) {
                         if(M.CH1pos>-128) M.CH1pos--;
                         if(M.CH1pos>-128) M.CH1pos--;
                     }
                 break;
                 case MCH2POS:     // CH2 Position
-                    if(testbit(Key,K2)) M.CH2pos+=2;
-                    if(testbit(Key,K3)) {
+                    if(testbit(Buttons,K2)) M.CH2pos+=2;
+                    if(testbit(Buttons,K3)) {
                         if(M.CH2pos>-128) M.CH2pos--;
                         if(M.CH2pos>-128) M.CH2pos--;
                     }
                 break;
                 case MVC1:     // V Cursor 1
-                    if(testbit(Key,K1)) Menu=MVC2;   // Select Cursor
-                    if(testbit(Key,K2)) {
+                    if(testbit(Buttons,K1)) Menu=MVC2;   // Select Cursor
+                    if(testbit(Buttons,K2)) {
                         clrbit(Mcursors, autocur);
                         if(M.VcursorA) M.VcursorA--;
                     }
-                    if(testbit(Key,K3)) {
+                    if(testbit(Buttons,K3)) {
                         clrbit(Mcursors, autocur);
                         M.VcursorA++;
                     }
                 break;
                 case MVC2:     // V Cursor 2
-                    if(testbit(Key,K1)) Menu=MVC1;    // Select Cursor
-                    if(testbit(Key,K2)) {
+                    if(testbit(Buttons,K1)) Menu=MVC1;    // Select Cursor
+                    if(testbit(Buttons,K2)) {
                         clrbit(Mcursors, autocur);
                         if(M.VcursorB) M.VcursorB--;
                     }
-                    if(testbit(Key,K3)) {
+                    if(testbit(Buttons,K3)) {
                         clrbit(Mcursors, autocur);
                         M.VcursorB++;
                     }
                 break;
                 case MCH1HC1:     // H Cursor 1
-                    if(testbit(Key,K1)) Menu=MCH1HC2;   // Select Cursor
-                    if(testbit(Key,K2)) {
-//                        if(!testbit(MFFT,xymode)) M.Hcursor1A++;
-                        M.Hcursor1A++;
-                    }
-                    if(testbit(Key,K3)) {
-//                        if(!testbit(MFFT,xymode)) { if(M.Hcursor1A) M.Hcursor1A--; }
-                        if(M.Hcursor1A) M.Hcursor1A--;
-                    }
+                    if(testbit(Buttons,K1)) Menu=MCH1HC2;   // Select Cursor
+                    if(testbit(Buttons,K2)) M.Hcursor1A++;
+                    if(testbit(Buttons,K3)) /*if(M.Hcursor1A)*/ M.Hcursor1A--;
                 break;
                 case MCH1HC2:     // H Cursor 2
-                    if(testbit(Key,K1)) Menu=MCH1HC1;    // Select Cursor
-                    if(testbit(Key,K2)) M.Hcursor1B++;
-                    if(testbit(Key,K3)) if(M.Hcursor1B) M.Hcursor1B--;
+                    if(testbit(Buttons,K1)) Menu=MCH1HC1;    // Select Cursor
+                    if(testbit(Buttons,K2)) M.Hcursor1B++;
+                    if(testbit(Buttons,K3)) /*if(M.Hcursor1B)*/ M.Hcursor1B--;
                 break;
                 case MCH2HC1:     // H Cursor 1
-                    if(testbit(Key,K1)) Menu=MCH2HC2;   // Select Cursor
-                    if(testbit(Key,K2)) {
-                        M.Hcursor2A++;
-//                        if(!testbit(MFFT,xymode)) M.Hcursor2A++;
-                    }
-                    if(testbit(Key,K3)) {
-//                        if(!testbit(MFFT,xymode)) { if(M.Hcursor2A) M.Hcursor2A--; }
-                        if(M.Hcursor2A) M.Hcursor2A--;
-                    }
+                    if(testbit(Buttons,K1)) Menu=MCH2HC2;   // Select Cursor
+                    if(testbit(Buttons,K2)) M.Hcursor2A++;
+                    if(testbit(Buttons,K3)) /*if(M.Hcursor2A)*/ M.Hcursor2A--;
                 break;
                 case MCH2HC2:     // H Cursor 2
-                    if(testbit(Key,K1)) Menu=MCH2HC1;    // Select Cursor
-                    if(testbit(Key,K2)) M.Hcursor2B++;
-                    if(testbit(Key,K3)) if(M.Hcursor2B) M.Hcursor2B--;
+                    if(testbit(Buttons,K1)) Menu=MCH2HC1;    // Select Cursor
+                    if(testbit(Buttons,K2)) M.Hcursor2B++;
+                    if(testbit(Buttons,K3)) /*if(M.Hcursor2B)*/ M.Hcursor2B--;
                 break;
             }  // end switch(menu)
             // Prevent uglyness on slow sampling with cursors
             if(Menu>=MVC1 && Menu<=MCH2HC2 && Srate>=11) setbit(Misc, redraw);
-            if(Menu==Mdefault && testbit(MStatus, stop))
+            if(Menu==MTIME && testbit(MStatus, stop))
                 if(Srate<11 || testbit(MFFT,xymode)) Menu=MHPOS;  // Horizontal Scroll
             CheckMax(); // Check variables
         }
@@ -1849,7 +1910,7 @@ void MSO(void) {
             Apply();        // Apply new oscilloscope settings
             if(testbit(Misc, redraw) || testbit(Display, persistent)) {
                 clrbit(Misc, redraw);
-                clr_display();
+                clr_display_1();
             }
             else {  // Only clear menu area
                 uint8_t *p;
@@ -1860,19 +1921,22 @@ void MSO(void) {
                 }
             }
         }
-        if(testbit(CH1ctrl,lowbatt)) {
-            //memcpy_P(Disp_send.display_data,  &BATTICON, 8);   // Low battery icon
-        }
+        //if(testbit(Misc,lowbatt)) {
+        // Low battery icon
+        //}
         // Print menu, also determine which items are selected and
         // print them on a black background (inverted print)
-        if(Menu) {
+        if(1) { // If update menu
             if(Menu<MUART) {
                 const char *menuch;
                 lcd_goto(0,LAST_LINE);  // Menu position
-                menuch=menustxt[pgm_read_byte_near(menupoint+Menu-1)];
+                menuch=menustxt[pgm_read_byte_near(menupoint+Menu)];
                 for(i=0; i<3; i++) {    // 3 Items in the menu
                     clrbit(Misc,negative);    // negative font
                     switch(Menu) {
+                        case MTIME:
+                            if(i==0 && testbit(MStatus, stop)) setbit(Misc,negative);
+                        break;
                         case MCH1:
                             if(i==0 && testbit(CH1ctrl,chon)) setbit(Misc,negative);
                         break;
@@ -1908,9 +1972,7 @@ void MSO(void) {
                                 (i==2 && M.Tsource>=2) ) setbit(Misc,negative);
                         break;
                         case MDISPLAY1:
-                            if( (i==0 && (Display&0x03)) ||
-                                (i==1 && testbit(Display, flip)) ||
-                                (i==2 && testbit(Display, disp_inv)) ) setbit(Misc,negative);
+                            if(  i==0 && (Display&0x03)) setbit(Misc,negative);
                         break;
                         case MMETER:
                             if( (i==0 && testbit(MStatus, vdc) && !testbit(MStatus, vp_p)) ||
@@ -2041,15 +2103,15 @@ void MSO(void) {
                 }
             }
 			if(Menu>=MPOSTT) {
-				if(Menu>=MOUTSIDE) Menu=Mdefault; // Menu outside range
+				if(Menu>=MOUTSIDE) Menu=MTIME; // Menu outside range
 				else {
 				    tiny_printp(56,LAST_LINE,PSTR("MOVE-        MOVE+"));
 				    if(Menu>=MCH1POS) {
                         lcd_goto(0,LAST_LINE);
-                        if(Menu<=MCH2POS) lcd_putsp(menustxt[10]);  // "Position"
+                        if(Menu<=MCH2POS) lcd_putsp(menustxt[11]);  // "Position"
                         else {
                             if(Menu<=MVC2) GLCD_Putchar('V'); else GLCD_Putchar('H');
-                            lcd_putsp(menustxt[4]+2);  // "Cursor"
+                            lcd_putsp(menustxt[5]+2);  // "Cursor"
                             if(testbit(Menu,0)) GLCD_Putchar('1'); else GLCD_Putchar('2');
                         }
                     }
@@ -2057,25 +2119,20 @@ void MSO(void) {
 			}
             // Info menus: AWG settings, Trigger Level, etc...
             lcd_goto(0,LAST_LINE);
-            if(M.Tsource==0) temp1=M.CH1gain;
-            else temp1=M.CH2gain;
+            if(M.Tsource==0) {
+                temp1=M.CH1gain;
+                temp2=CH1ctrl;
+            }                
+            else {
+                temp1=M.CH2gain;
+                temp2=CH2ctrl;
+            }                
             if(temp1>=4) text = unitmV;
             else text = unitV;
             switch(Menu) {
                 case MSPI:  // SPI Configuration
-                
-                
-                
-                
-                
-//                    if(testbit(Sniffer,CPOL))   memcpy_P(Disp_send.display_data+(128*7+112),  &PULSEINV, 8);   // icon
-//                    else                        memcpy_P(Disp_send.display_data+(128*7+112),  &PULSE, 8);   // icon
-
-
-
-
-
-
+                    if(testbit(Sniffer,CPOL))   memcpy_P(Disp_send.display_data+(128*7+33),  &PULSEINV, 8);   // Pulse icon
+                    else                        memcpy_P(Disp_send.display_data+(128*7+33),  &PULSE, 8);   // Pulse icon
                     if(testbit(Sniffer,CPHA))   set_pixel(38,MAX_Y-6);
                     else                        set_pixel(35,MAX_Y-6);
                 break;
@@ -2131,20 +2188,20 @@ void MSO(void) {
                         GLCD_Putchar('s');  // seconds
                     }
                     else {  // Edge or Dual edge trigger mode
-                        printV((int16_t)(128-M.Tlevel)*128,temp1);
+                        printV((int16_t)(128-M.Tlevel)*128,temp1,temp2);
                         lcd_putsp(text);
                     }
                 break;
-                case MTW1:
-                    lcd_putsp(Fone+1); printV((int16_t)(128-M.Window1)*128,temp1); lcd_putsp(text);
+                case MTW1:  // "1:"
+                    lcd_putsp(Fone+1); printV((int16_t)(128-M.Window1)*128,temp1,temp2); lcd_putsp(text);
                 break;
-                case MTW2:
-                    lcd_putsp(Ftwo+1); printV((int16_t)(128-M.Window2)*128,temp1); lcd_putsp(text);
+                case MTW2:  // "2:"
+                    lcd_putsp(Ftwo+1); printV((int16_t)(128-M.Window2)*128,temp1,temp2); lcd_putsp(text);
                 break;
-                case MSW1:
+                case MSW1:  // "1:"
                     lcd_putsp(Fone+1); printN(M.Sweep1);
                 break;
-                case MSW2:
+                case MSW2:  // "2:"
                     lcd_putsp(Ftwo+1); printN(M.Sweep2);
                     break;
                 case MHPOS: lcd_putsp(Stop); break;
@@ -2152,11 +2209,11 @@ void MSO(void) {
                     printN(AWGspeed);
                 break;
                 case MAWGAMP:   // Amplitude
-                    printF(0,LAST_LINE,(int32_t)(-M.AWGamp)*(100000/32));
+                    printF(0,LAST_LINE,(int32_t)(-M.AWGamp)*(100000/AWG_SCALE));		// 128/AWG_SCALE = Maximum amplitude
                     GLCD_Putchar('V');
                 break;
                 case MAWGOFF:   // Offset
-                    printF(0,LAST_LINE,((int32_t)(-M.AWGoffset)*(50016/32)));
+                    printF(0,LAST_LINE,((int32_t)(-M.AWGoffset)*(50016/AWG_SCALE)));   // Maximum offset
                     GLCD_Putchar('V');
                 break;
                 case MAWGDUTY:  // Duty Cycle
@@ -2170,7 +2227,6 @@ void MSO(void) {
                 break;
             }
         }
-        else if(testbit(MStatus, stop)) tiny_printp(0,LAST_LINE, Stop);
         if(MFFT>=0x20) { // Not Meter mode
             // Grid
             if(!testbit(MFFT, fftmode)) {
@@ -2217,7 +2273,7 @@ void MSO(void) {
                     if(testbit(CH1ctrl,chmath)) {
                         lcd_goto(88,0);
                         if(testbit(CH1ctrl,chinvert)) GLCD_Putchar('-'); else GLCD_Putchar(' ');
-                        lcd_putsp(menustxt[12]+1);  // CH1 text
+                        lcd_putsp(menustxt[13]+1);  // CH1 text
                         if(testbit(CH1ctrl,submult)) {
                             if(testbit(CH2ctrl,chinvert)) GLCD_Putchar('+'); else GLCD_Putchar('-');
                         }
@@ -2225,13 +2281,14 @@ void MSO(void) {
                             GLCD_Putchar('X');
                             if(testbit(CH2ctrl,chinvert)) { GLCD_Putchar('-'); u8CursorX-=4; }
                         }
-                        lcd_putsp(menustxt[12]+15); // CH2 text
+                        lcd_putsp(menustxt[13]+15); // CH2 text
                     }
                     else {
                         lcd_goto(76,0);
                         if(testbit(CH1ctrl,chinvert)) GLCD_Putchar('-'); else GLCD_Putchar(' ');
-                        lcd_putsp(menustxt[12]+1);  // CH1 text
-                        lcd_putsp(gaintxt[M.CH1gain]);
+                        lcd_putsp(menustxt[13]+1);  // CH1 text
+                        if(testbit(CH1ctrl,x10)) lcd_putsp(gainx10txt[M.CH1gain]);  // Using 10x probe
+                        else lcd_putsp(gaintxt[M.CH1gain]);                         // Using 1x probe
                         lcd_putsp(Vdiv);    // V/div
                     }
                     ypos++;
@@ -2240,7 +2297,7 @@ void MSO(void) {
                     if(testbit(CH2ctrl,chmath)) {
                         lcd_goto(88,ypos);
                         if(testbit(CH2ctrl,chinvert)) GLCD_Putchar('-'); else GLCD_Putchar(' ');
-                        lcd_putsp(menustxt[12]+16); // CH2 text
+                        lcd_putsp(menustxt[13]+16); // CH2 text
                         if(testbit(CH2ctrl,submult)) {
                             if(testbit(CH1ctrl,chinvert)) GLCD_Putchar('+'); else GLCD_Putchar('-');
                         }
@@ -2248,13 +2305,14 @@ void MSO(void) {
                             GLCD_Putchar('X');
                             if(testbit(CH2ctrl,chinvert)) { GLCD_Putchar('-'); u8CursorX-=4; }
                         }
-                        lcd_putsp(menustxt[12]);  // CH1 text
+                        lcd_putsp(menustxt[13]);  // CH1 text
                     }
                     else {
                         lcd_goto(76,ypos);
                         if(testbit(CH2ctrl,chinvert)) GLCD_Putchar('-'); else GLCD_Putchar(' ');
-                        lcd_putsp(menustxt[12]+16); // CH2 text
-                        lcd_putsp(gaintxt[M.CH2gain]);
+                        lcd_putsp(menustxt[13]+16); // CH2 text
+                        if(testbit(CH2ctrl,x10)) lcd_putsp(gainx10txt[M.CH2gain]);  // Using 10x probe
+                        else lcd_putsp(gaintxt[M.CH2gain]);                         // Using 1x probe
                         lcd_putsp(Vdiv);    // V/div
                     }
                     ypos++;
@@ -2268,45 +2326,6 @@ void MSO(void) {
                     lcd_putsp(Sdiv);    // S/div
                 }
                 ypos++;
-            }
-            // Show reference waveforms
-            if(testbit(Mcursors, reference)) {
-                i=0;
-                if(Srate>=11) {
-                    do {
-                        uint8_t nx, ox, ny1, oy1, ny2, oy2;
-                        oy1=ny1; oy2=ny2;
-                        ny1=eeprom_read_byte(&EECHREF1[i]);
-                        ny2=eeprom_read_byte(&EECHREF2[i]);
-                        nx=i>>1;
-                        ox=(i-1)>>1;
-                        if(testbit(Display, line)) {
-                            if(i==0) continue;
-                            if(testbit(CH1ctrl,chon)) lcd_line(nx, ny1, ox, oy1);
-                            if(testbit(CH2ctrl,chon)) lcd_line(nx, ny2, ox, oy2);
-                        }
-                        else {
-                            if(testbit(CH1ctrl,chon)) set_pixel(nx, ny1);
-                            if(testbit(CH2ctrl,chon)) set_pixel(nx, ny2);
-                        }
-                    } while(++i);
-                }
-                else {
-                    uint8_t ny1, ny2, oy2;
-                    for (j=M.HPos; i<128; i++, j++, temp3=ny1, oy2=ny2) {
-                        ny1=eeprom_read_byte(&EECHREF1[j]);
-                        ny2=eeprom_read_byte(&EECHREF2[j]);
-                        if(testbit(Display, line)) {
-                            if(i==0) continue;
-                            if(testbit(CH1ctrl,chon)) lcd_line(i, ny1, i-1, temp3);
-                            if(testbit(CH2ctrl,chon)) lcd_line(i, ny2, i-1, oy2);
-                        }
-                        else {
-                            if(testbit(CH1ctrl,chon)) set_pixel(i, ny1);
-                            if(testbit(CH2ctrl,chon)) set_pixel(i, ny2);
-                        }
-                    }
-                }
             }
             i=ypos;
             // Trigger mark if tsource is CH1 or CH2
@@ -2396,7 +2415,6 @@ void MSO(void) {
         if(testbit(USB.STATUS,USB_SUSPEND_bp) && USB.ADDR) USB_ResetInterface();
         if(!testbit(MStatus,stop) && (Srate<11 || Index==0)) {
             if(!(Srate>=11 && testbit(Mcursors,roll))) ONGRN();
-//            if(!testbit(PORTE.IN,1)) ONRED(); // LINK signal or battery charging
         }
 		if(testbit(MStatus, updateawg)) BuildWave();
         ADCA.CH2.CTRL     = 0x80;   // VCC measurement
@@ -2406,8 +2424,8 @@ void MSO(void) {
         delay_ms(2); OFFGRN();
         // change wait to sleep
         WaitDisplay();
-        if(ADCA.CH2RESL<18) setbit(CH1ctrl, lowbatt);
-        else clrbit(CH1ctrl, lowbatt);
+//        if(ADCA.CH2RESL<18) setbit(Misc, lowbatt);
+//       else clrbit(Misc, lowbatt);
 ///////////////////////////////////////////////////////////////////////////////
 // Limit LCD refresh rate
 /*        if(MFFT>=0x20 || (adjusting==0)) { // Not meter mode, Auto setup has not yet locked on settings
@@ -2430,8 +2448,8 @@ void AutoSet(void) {
     clrbit(Trigger, single);    // Clear Single trigger
     clrbit(Trigger, autotrg);   // Clear Auto trigger
     adjusting=7;                // First adjusting step
-    Menu=Mdefault;
-    Key=0;
+    Menu=MTIME;
+    Buttons=0;
 }
 
 // Reduce gain in Auto setup
@@ -2505,12 +2523,12 @@ uint8_t fft_stuff(uint8_t *p1) {
     fft_execute(Temp.FFT.bfly);
     fft_output(Temp.FFT.bfly, Temp.FFT.magn);
     // Find maximum frequency
-    uint8_t max=3,current;
+    uint8_t max=3;
     uint8_t i=1;                                // Ignore DC
     if(Temp.FFT.magn[0]>Temp.FFT.magn[1]) i=2;  // Ignore big DC
     f=0;
     for(; i<FFT_N/2; i++) {
-        current=Temp.FFT.magn[i];
+        uint8_t current=Temp.FFT.magn[i];
         if(current>max) {
             max=current; f=i;
         }
@@ -2580,18 +2598,17 @@ end_scan:
 
 // Measurements for Meter Mode, ADC will use 12bit resolution
 static inline void Measurements(void) {
-    int32_t avrg1=0, avrg2=0;       // Averages
-    static int16_t v1,v2;
+    static uint8_t second,minute,hour;  // Time for Pulse Counter
+    int32_t avrg1=0, avrg2=0;           // Averages
 	int16_t calibrate;
-    uint8_t i=0;
     setbit(Misc,bigfont);
     lcd_goto(0,2);
-    if(testbit(MStatus,vdc)) {         // Display VDC
-        uint8_t oldctrlab, oldprescalea, oldctrlbb, oldprescaleb, oldch0, oldch1;
+    if(testbit(MStatus,vdc) && !testbit(MStatus,vp_p)) {	// Display VDC
+        uint8_t oldctrlba, oldctrlbb, oldprescalea, oldprescaleb, oldch0, oldch1;
         if(testbit(MStatus,stop)) goto cancelvdc;
-        oldctrlab = ADCA.CTRLB;
-        oldprescalea = ADCA.PRESCALER;
+        oldctrlba = ADCA.CTRLB;
         oldctrlbb = ADCB.CTRLB;
+        oldprescalea = ADCA.PRESCALER;
         oldprescaleb = ADCB.PRESCALER;
         oldch0=ADCA.CH0.CTRL;
         oldch1=ADCB.CH0.CTRL;
@@ -2599,6 +2616,7 @@ static inline void Measurements(void) {
         ADCA.PRESCALER = 0x07;      // Prescaler 512 (125kHZ ADC clock)
         ADCB.CTRLB = 0x10;          // signed mode, no free run, 12 bit right adjusted
         ADCB.PRESCALER = 0x07;      // Prescaler 512 (125kHZ ADC clock)
+        uint8_t i=0;
         do {
             ADCA.CH0.CTRL     = 0x83;   // Start conversion, Differential input with gain
             ADCB.CH0.CTRL     = 0x83;   // Start conversion, Differential input with gain
@@ -2607,70 +2625,96 @@ static inline void Measurements(void) {
             avrg2-= (int16_t)ADCB.CH0.RES;
             if(testbit(MStatus,update)) goto cancelvdc;
         } while(++i);
-		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH1);    // CH1 Offset Calibration
+		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH1);      // CH1 Offset Calibration
         avrg1+=calibrate;
-//		calibrate=eeprom_read_word((int16_t *)&gain16CH1);      // CH1 Gain Calibration
-//		avrg1*=calibrate;
-		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH2);    // CH2 Offset Calibration
+		//calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH1);            // CH1 Gain Calibration
+		//avrg1=avrg1*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
+		calibrate=(int16_t)eeprom_read_word((uint16_t *)&offset16CH2);      // CH2 Offset Calibration
         avrg2+=calibrate;
-//		calibrate=eeprom_read_word((int16_t *)&gain16CH2);      // CH2 Gain Calibration
-//		avrg2*=calibrate;
-        v1=((avrg1>>5)+v1)/2; // no average: avrg2>>5;
-        v2=((avrg2>>5)+v2)/2; // no average: avrg2>>5;
+		//calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH2);            // CH2 Gain Calibration
+		//avrg2=avrg2*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
+        Temp.IN.METER.Vdc[0]= avrg1>>5; // Exp. average: ((avrg1>>5)+Temp.IN.METER.Vdc[0])/2;
+        Temp.IN.METER.Vdc[1]= avrg2>>5; // Exp. average: ((avrg2>>5)+Temp.IN.METER.Vdc[1])/2;
         ADCB.CH0.CTRL = oldch1;
         ADCA.CH0.CTRL = oldch0;
         ADCA.PRESCALER = oldprescalea;
-        ADCA.CTRLB = oldctrlab;
+        ADCA.CTRLB = oldctrlba;
         ADCB.PRESCALER = oldprescaleb;
         ADCB.CTRLB = oldctrlbb;
 cancelvdc:
-        printV(v1,0);
+        printV(Temp.IN.METER.Vdc[0],0, CH1ctrl);
         lcd_goto(64,2);
-        printV(v2,0);
+        printV(Temp.IN.METER.Vdc[1],0, CH2ctrl);
     }
-    else if(testbit(MStatus,vp_p)) {   // Display VPP
-                        printV((int16_t)CH1.vpp*128,M.CH1gain);
-        lcd_goto(64,2); printV((int16_t)CH2.vpp*128,M.CH2gain);
+    else if(testbit(MStatus,vp_p) && !testbit(MStatus,vdc)) {   // Display VPP
+                        printV((int16_t)CH1.vpp*128, M.CH1gain, CH1ctrl);
+        lcd_goto(64,2); printV((int16_t)CH2.vpp*128, M.CH2gain, CH2ctrl);
     }
     else {                          // Display frequency
-        // TCC1:Lo16 TCE0:Hi16 TCC0:Timer
-        // Event CH2:Ext, Event CH4:TCC0 overflow, Event CH5:TCC1 overflow
+        // TCC1:Lo16 TCE1:Hi16 TCC0:Timer
+        // Event CH2:Input, Event CH4:TCC0 overflow, Event CH5:TCC1 overflow
         uint32_t freqv;
-        cli();
-        TCC0.CTRLA = 0;             // Stop time keeper
-        TCC0.CTRLE = 0;             // Normal mode
-        TCC0.CTRLFSET = 0x0C;       // Reset timer
-        TCC0.PER = 31250;           // Period is 1 second, one tick added to sync
-        TCE0.CTRLA = 0;             // Stop timer prior to reset
-        TCE0.CTRLFSET = 0x0C;       // Reset timer
-        TCE0.CTRLB =  TC0_CCAEN_bm; // Capture enable
-        TCE0.CTRLD = 0x3C;          // Input capture on event, delay compensate, Event CH4
-        TCE0.CTRLA = TC_CLKSEL_EVCH5_gc;    // Event CH5 is TCE0 clock source
-        TCC1.CTRLA = 0;             // Stop timer prior to reset
-        TCC1.CTRLFSET = 0x0C;       // Reset timer
-        TCC1.CTRLB = TC1_CCAEN_bm;  // Capture enable
-        TCC1.CTRLD = 0x2C;          // Input capture on event, no delay compensate, Event CH4
-        TCC0.CTRLA =  7;            // Start Timer, because of the common prescaler, the start is variable
-        while(TCC0.CNTL==0);        // Sync with common prescaler
-        TCC1.CTRLA = TC_CLKSEL_EVCH2_gc;    // Event CH2 is TCC1 clock source
-        sei();
-        freqv=pgm_read_dword_near(freqval+Srate)/256;
-        printF( 0,2,(int32_t)(CH1.f)*freqv);
-        printF(64,2,(int32_t)(CH2.f)*freqv);
-        adjusting=11;
-        calibrate = 1010;           // 1.01 second timeout
-        while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {	// Should be ready in 1 second
-            _delay_ms(1);
-            if(testbit(MStatus,update) || (--calibrate==0)) goto cancelfreq;
+		if(!testbit(MStatus,vdc) || TCC1.CTRLB==0) { // Reset counters
+            second=minute=hour=0;           // Reset time
+            cli();
+            TCC0.CTRLA = 0;                 // Stop time keeper
+            TCC0.CTRLE = 0;                 // Normal mode
+            TCC0.CTRLFSET = 0x0C;           // Reset timer
+	        TCC0.PER = 31250;               // Period is 1 second, one tick added to sync
+			TCE1.CTRLA = 0;                 // Stop timer prior to reset
+			TCE1.CTRLFSET = 0x0C;           // Reset timer
+			TCE1.CTRLB =  TC0_CCAEN_bm;     // Capture enable
+			TCE1.CTRLD = 0x3C;              // Input capture on event, delay compensate, Event CH4
+			TCE1.CTRLA = TC_CLKSEL_EVCH5_gc;// Event CH5 is TCE1 clock source
+            TCE1.PER = 0x05F4;              // Max value before rolling over: 99942399
+			TCC1.CTRLA = 0;                 // Stop timer prior to reset
+			TCC1.CTRLFSET = 0x0C;           // Reset timer
+			TCC1.CTRLB = TC1_CCAEN_bm;      // Capture enable
+			TCC1.CTRLD = 0x2C;              // Input capture on event, no delay compensate, Event CH4
+            TCC0.CTRLA =  7;                // Start Timer, because of the common prescaler, the start is variable
+            while(TCC0.CNTL==0);            // Sync with common prescaler
+            TCC1.CTRLA = TC_CLKSEL_EVCH2_gc;// Event CH2 is TCC1 clock source
+            sei();
+            while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {	// Should be ready in 1 second
+                if(testbit(MStatus,update) || testbit(MStatus, updatemso)) goto cancelfreq;
+            }
+		}
+		else EVSYS.STROBE = 0x10;           // In counter mode, manually trigger the capture (strobe CH4 event)
+        if(testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {
+            TCC0.INTFLAGS =0xFF;    // Clear flag
+            TCC0.PER = 31249;       // Adjust Period to 1 second
+            if(!testbit(MStatus, stop)) second++;
+            if(second>=60) {
+                second=0;
+                minute++;
+                if(minute>=60) {
+                    minute=0;
+                    hour++;
+                }
+            }
         }
-        freqv = TCE0.CCABUF;
-        freqv = (freqv<<16) + TCC1.CCABUF;
+        if(!testbit(MStatus,vdc)) { // Display CH1 and CH2 frequencies
+            freqv=pgm_read_dword_near(freqval+Srate)/256;
+            printF( 0,2,(int32_t)(CH1.f)*freqv);
+            printF(64,2,(int32_t)(CH2.f)*freqv);
+        } else {                   // Display time 
+            lcd_goto(48,1);
+            printN(hour); GLCD_Putchar(':');
+            printN(minute); GLCD_Putchar(':');
+            printN(second);
+        }
+        freqv = TCE1.CCA;
+        freqv = (freqv<<16) + TCC1.CCA;
         setbit(Misc,negative);
         printF(8,5,freqv);          // Print count
+        Temp.IN.METER.Freq = freqv;
         clrbit(Misc,negative);
 cancelfreq:
         // End
-        setbit(MStatus, updatemso);
+        if(!testbit(MStatus,vdc)) {
+            adjusting=7;                // First adjusting step
+            setbit(MStatus, updatemso); // Frequency measure mode, reset MSO
+        }
     }
     clrbit(Misc,bigfont);
 }
@@ -2728,79 +2772,82 @@ static inline void ShowCursorV(void) {
 static inline void ShowCursorH(void) {
     // Display Horizontal Cursor, cursor disabled during FFT mode
     if(!testbit(MFFT, fftmode)) {
-        uint8_t gain,HcursorA,HcursorB,*data;
+        uint8_t gain,HcursorA,HcursorB, dispHA, dispHB,*data, CHctrl;
         int8_t CHPos;
         ACHANNEL *CH;
 	    if(testbit(Mcursors,cursorh1)) {
     		gain=M.CH1gain;
+            CHctrl = CH1ctrl;
 		    HcursorA=M.Hcursor1A;
-		    HcursorB=M.Hcursor1B<<1;
+		    HcursorB=M.Hcursor1B;
 		    CHPos=M.CH1pos;
 		    CH=&CH1; data=DC.CH1data;
 	    }
 	    else {
     		gain=M.CH2gain;
+            CHctrl = CH2ctrl;
 		    HcursorA=M.Hcursor2A;
-		    HcursorB=M.Hcursor2B<<1;
+		    HcursorB=M.Hcursor2B;
 		    CHPos=M.CH2pos;
 		    CH=&CH2; data=DC.CH2data;
 	    }
+		HcursorA<<=1;
+		HcursorB<<=1;
 		if(testbit(Mcursors,track)) {
-   			HcursorA=addwsat(data[M.VcursorA+M.HPos],CHPos);
-    		HcursorB=addwsat(data[M.VcursorB+M.HPos],CHPos);
+   			HcursorA=data[M.VcursorA+M.HPos];
+    		HcursorB=data[M.VcursorB+M.HPos];
 		}
 		else if(testbit(Mcursors,autocur)) {
-            // Apply position
-            HcursorA=addwsat(CH->max,CHPos)>>1;
-            HcursorB=addwsat(CH->min,CHPos)>>1;
+            HcursorA=CH->max;
+            HcursorB=CH->min;
 		}
-        if(HcursorA>=128) HcursorA=127;
-        if(HcursorB>=128) HcursorB=127;
-        //if(!testbit(MFFT,xymode)) HcursorA=HcursorA>>1;
-        //else HcursorA=127-HcursorA;
-        //HcursorB=HcursorB>>1;
-        for(uint8_t i=1; i<=(MAX_X-1); i+=4) {
-            if(testbit(MFFT,xymode)) {
-                if(i<=MAX_Y) set_pixel(HcursorA,i);  // Vertical Line for HcursorA
+        if(testbit(MFFT,xymode)) {
+            dispHA=128-(HcursorA>>1);
+			dispHB=(HcursorB-M.HPos)>>1;
+            for(uint8_t i=1; i<=(MAX_X-1); i+=4) {
+                if(i<=MAX_Y) set_pixel(dispHA,i);				// Vertical Line for HcursorA
+                if(dispHB<MAX_Y) set_pixel(i+2,dispHB);     // Horizontal Line for HcursorB
             }
-            else set_pixel(i,HcursorA);                         // Horizontal Line for HcursorA
-            set_pixel(i+2,HcursorB);                            // Horizontal Line for HcursorB
+        }            
+        else {
+			dispHA=(HcursorA+CHPos)>>1;
+			dispHB=(HcursorB+CHPos)>>1;
+			for(uint8_t i=1; i<=(MAX_X-1); i+=4) {
+                if(dispHA<MAX_Y) set_pixel(i,dispHA);            // Horizontal Line for HcursorA
+                if(dispHB<MAX_Y) set_pixel(i+2,dispHB);          // Horizontal Line for HcursorB
+            }
         }
-        int8_t adjustedA,adjustedB;
+		HcursorA>>=1;
+		HcursorB>>=1;    
         char const *Hcursorunit;                  // Horizontal cursor units
         if(testbit(MFFT,xymode)) {
-            adjustedA=HcursorA-MAX_Y+1;
-            adjustedB=(MAX_Y+1)-HcursorB-(M.HPos/2);
             tiny_printp(78,LAST_LINE-2, PSTR("X "));          // X
-            printV(adjustedA*256, M.CH1gain);
+            printV((64-(int8_t)HcursorA)*256, M.CH1gain, CH1ctrl);
             if(M.CH1gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
             lcd_putsp(Hcursorunit);
-            tiny_printp(78,LAST_LINE-1, menustxt[35]+32);     // Y
-            printV(adjustedB*256, M.CH2gain);
+            tiny_printp(78,LAST_LINE-1, menustxt[36]+32);     // Y
+            printV((64-(int8_t)HcursorB)*256, M.CH2gain, CH2ctrl);
             if(M.CH2gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
             lcd_putsp(Hcursorunit);
         }
         else {
             uint8_t y;
-            // Apply position
-            adjustedA=32-HcursorA+(CHPos+64)/2;
-            adjustedB=32-HcursorB+(CHPos+64)/2;
             // Decide where to print text
             if(HcursorA<HcursorB) y=0;
             else y=LAST_LINE-1;
             // Display values
             if(gain>=4) Hcursorunit = unitmV;
             else Hcursorunit = unitV;
-            lcd_goto(8,y); printV(adjustedA*256, gain);
+            lcd_goto(8,y); printV((64-(int8_t)HcursorA)*256, gain, CHctrl);
             lcd_putsp(Hcursorunit);
             if(HcursorA<HcursorB) y=LAST_LINE-1;
             else y=0;
-            lcd_goto(8,y); printV(adjustedB*256, gain);
+            lcd_goto(8,y); printV((64-(int8_t)HcursorB)*256, gain, CHctrl);
             lcd_putsp(Hcursorunit);
             tiny_printp(76,LAST_LINE-1, delta_V);  // delta V =
-            printV(((int16_t)HcursorA-HcursorB)*256, gain);
+            printV(((int16_t)HcursorA-HcursorB)*256, gain, CHctrl);
             lcd_putsp(Hcursorunit);
         }
     }
@@ -2810,9 +2857,8 @@ static inline void ShowCursorH(void) {
 extern const NVMVAR MAXM;
 void CheckMax(void) {
     uint8_t *p=&M.CH1gain;
-    uint8_t max;
     for(uint8_t i=0; i<sizeof(NVMVAR); i++) {
-        max=pgm_read_byte(&MAXM.CH1gain+i);
+        uint8_t max=pgm_read_byte(&MAXM.CH1gain+i);
         if(*p>=max) *p=max;
         p++;
     }
@@ -2848,9 +2894,9 @@ void Apply(void) {
     CheckMax();
     CheckPost();    
     PMIC.CTRL = 0x04;       // Only high level interrupts
-    TCE0.CTRLA = 0;		    // TCE0 controls Interrupt ADC, srate: 6, 7, 8, 9, 10 and fixed value for slow sampling
-    TCE0.CTRLB = 0;
-    TCE0.INTCTRLA = 0;
+    TCE1.CTRLA = 0;		    // TCE1 controls Interrupt ADC, srate: 6, 7, 8, 9, 10 and fixed value for slow sampling
+    TCE1.CTRLB = 0;
+    TCE1.INTCTRLA = 0;
     TCC1.CTRLA = 0;
     TCC1.CTRLB = 0;
     // TCC0 controls the auto trigger and auto key repeat
@@ -2874,23 +2920,23 @@ void Apply(void) {
 
     ADCA.CTRLB = 0x14;          // signed mode, no free run, 8 bit
     ADCB.CTRLB = 0x14;          // signed mode, no free run, 8 bit
-    ADCA.EVCTRL = 0x05;         // Sweep channels 0, Event CH0 (TCE0), Sync Sweep
-    ADCB.EVCTRL = 0x05;         // Sweep channels 0, Event CH0 (TCE0), Sync Sweep
+    ADCA.EVCTRL = 0x05;         // Sweep channels 0, Event CH0 (TCE1), Sync Sweep
+    ADCB.EVCTRL = 0x05;         // Sweep channels 0, Event CH0 (TCE1), Sync Sweep
     ADCA.PRESCALER = 0x03;      // Prescaler: 32
     ADCB.PRESCALER = 0x03;      // Prescaler: 32
     // Set ADC Clock
     if(Srate>=11) { // Slow Sample rates >= 20mS/div
         //TCD0.PERH = 0;       // Refresh rate per pixel 976.5625Hz.
-        TCE0.CTRLA = 0x03;  // DIV4
-        if(Srate==11) TCE0.PER = 4999;      // 1600 Hz
-        else TCE0.PER = 6249;               // 1280 Hz
+        TCE1.CTRLA = 0x03;  // DIV4
+        if(Srate==11) TCE1.PER = 4999;      // 1600 Hz
+        else TCE1.PER = 6249;               // 1280 Hz
         slowval = (uint16_t)pgm_read_word_near(slowcnt-11+Srate);
     }
     else {  // Fast sampling
         Index = 0;
         //TCD0.PERH = 7;              // TCD0H controls LCD refresh rate: 122.07Hz
         if(Srate>=6) {
-            TCE0.PER = (uint16_t)pgm_read_word_near(TCE0val+Srate-6); // ADC clock
+            TCE1.PER = (uint16_t)pgm_read_word_near(TCE1val+Srate-6); // ADC clock
         }
         else {  // sampling rate 256uS/div and under, use DMA
             //ADCA.CTRLB  = 0x1C;     // signed mode, free run, 8 bit
@@ -2909,8 +2955,6 @@ void Apply(void) {
             }
         }
     }
-    // Display settings
-//	GLCD_setting();
     // CH gains
     ADCA.CTRLA          = 0x01;     // Enable ADC
     ADCB.CTRLA          = 0x01;     // Enable ADC
@@ -2945,7 +2989,7 @@ void Apply(void) {
  }
 
 // Slow sampling control - 640Hz or 1600Hz
-ISR(TCE0_OVF_vect) {
+ISR(TCE1_OVF_vect) {
     static uint16_t count=0;
     static uint32_t sum1,sum2;
     uint8_t mul,chd,ch1,ch2,sch1,sch2;
@@ -3083,7 +3127,7 @@ ISR(TCE0_OVF_vect) {
         if(!testbit(Mcursors,roll)) {
             if(Index==0) {
                 if(testbit(CHDctrl,hexs) && testbit(MFFT, scopemode)) HEXSerial();
-                TCE0.INTCTRLA = 0;  // Stop acquiring until next trigger
+                TCE1.INTCTRLA = 0;  // Stop acquiring until next trigger
                 if(testbit(MStatus, stop)) {
                     u8CursorX = ou8CursorX;
                     u8CursorY = ou8CursorY;
@@ -3101,7 +3145,7 @@ ISR(TCE0_OVF_vect) {
                 }
             }
         }
-        else if(testbit(MStatus,stop)) TCE0.INTCTRLA = 0;  // Stop acquiring
+        else if(testbit(MStatus,stop)) TCE1.INTCTRLA = 0;  // Stop acquiring
     }
     u8CursorX = ou8CursorX;
     u8CursorY = ou8CursorY;
@@ -3160,7 +3204,7 @@ void StartDMAs(void) {
         ADCA.CTRLB = 0x1C;  // signed mode, free run, 8 bit
         ADCB.CTRLB = 0x1C;  // signed mode, free run, 8 bit
     }
-    else TCE0.CTRLA  = 0x02;        // Enable Timer, Prescaler: clk/2
+    else TCE1.CTRLA  = 0x02;        // Enable Timer, Prescaler: clk/2
     // Minimum time: 128us, Maximum time: 160mS
     uint16_t i=0;
     while(!testbit(DMA.CH0.CTRLB,4)) {   // Capture one full buffer of pre-trigger samples
@@ -3172,4 +3216,26 @@ void StartDMAs(void) {
         }
         if(i==0) break;     // timeout ~ 197mS
     }
+}
+
+extern NVMVAR EEMEM EEM;
+
+// Load Oscilloscope settings from EEPROM
+static inline void LoadEE(void) {
+    eeprom_read_block(0, &EEGPIO, 12);
+    eeprom_read_block(&M, &EEM, sizeof(NVMVAR));
+}
+
+// Save settings to EEPROM
+void SaveEE(void) {
+    //if(!testbit(Misc,lowbatt)) {
+        if(MFFT<0x20) { // Don't save Meter mode settings
+            Srate=old_s;
+            M.CH1gain=old_g1;
+            M.CH2gain=old_g2;
+        }
+        eeprom_write_block(0, &EEGPIO, 12);
+        eeprom_write_block(&M, &EEM, sizeof(NVMVAR));
+        old_s=Srate; old_g1=M.CH1gain; old_g2=M.CH2gain;
+    //}
 }

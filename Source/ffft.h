@@ -161,58 +161,51 @@ int8_t Sin(uint8_t angle);
 	adc	\d3, EH
 .endm
 
-
-.macro	SQRT32	; 32bit square root (526..542clk)
-	clr	T6L
-	clr	T6H
-	clr	T8L
-	clr	T8H
-	ldi	BL, 1
-	ldi	BH, 0
-	clr	CL
-	clr	CH
-	ldi	DH, 16
-90:	lsl	T2L
-	rol	T2H
-	rol	T4L
-	rol	T4H
-	rol	T6L
-	rol	T6H
-	rol	T8L
-	rol	T8H
-	lsl	T2L
-	rol	T2H
-	rol	T4L
-	rol	T4H
-	rol	T6L
-	rol	T6H
-	rol	T8L
-	rol	T8H
-	brpl	91f
-	add	T6L, BL
-	adc	T6H, BH
-	adc	T8L, CL
-	adc	T8H, CH
-	rjmp	92f
-91:	sub	T6L, BL
-	sbc	T6H, BH
-	sbc	T8L, CL
-	sbc	T8H, CH
-92:	lsl	BL
-	rol	BH
-	rol	CL
-	andi	BL, 0b11111000
-	ori	BL, 0b00000101
-	sbrc	T8H, 7
-	subi	BL, 2
-	dec	DH
-	brne	90b
-	lsr	CL
-	ror	BH
-	ror	BL
-	lsr	CL
-	ror	BH
-	ror	BL
+;  r5: r4: r3:r2  - input
+;     r20:r19:r18 - answer
+;      r8: r7: r6 - remainder
+;             r23 - loop count
+.macro	SQRT32          ; 32bit square root (526..542clk)
+    clr     r6          ; clear remainder
+    clr     r7
+    clr     r8
+    clr     r18         ; clear answer
+    clr     r19
+    clr     r20
+    ldi     r23,16      ; Init loop count to 16
+sqrt32loop:
+    lsl     r18         ; answer <<= 1
+    rol     r19
+    rol     r20
+    lsl     r2          ; shift two MSBs into remainder
+    rol     r3
+    rol     r4
+    rol     r5
+    rol     r6
+    rol     r7
+    rol     r8
+    lsl     r2
+    rol     r3
+    rol     r4
+    rol     r5
+    rol     r6
+    rol     r7
+    rol     r8
+    cp      r18,r6      ; answer < remainder ?
+    cpc     r19,r7
+    cpc     r20,r8
+    brcc    sqrt32bitdone
+    inc     r18         ; answer++, lsb = 0
+    sub     r6,r18      ; remainder -= answer
+    sbc     r7,r19
+    sbc     r8,r20
+    inc     r18         ; answer++, bit_1 = 0
+sqrt32bitdone:
+    dec   r23           ; decrement loop count
+    brne  sqrt32loop    ; branch if not done
+    lsr   r20           ; root = answer / 2
+    ror   r19
+    ror   r18
 .endm
 
 #endif	/* FFFT_ASM */
