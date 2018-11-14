@@ -26,6 +26,7 @@ email me at: gabriel@gabotronics.com
 #include "data.h"
 #include "display.h"
 #include "hardware.h"
+#include "games.h"
 
 #define WaitDisplay() while(testbit(LCD_CTRL,LCD_CS))
 
@@ -212,7 +213,6 @@ void WaitRefresh(void);
 void PowerDown(void);
 void CPU_Fast(void);
 void CPU_Slow(void);
-void CHESS(void);
 void MSO(void);
 void Calibrate(void);
 void CCPWrite( volatile uint8_t * address, uint8_t value );
@@ -290,7 +290,12 @@ typedef union {
             X,Y,                 /* X=origin, Y=target square of best move so far     */
             a;                   /* D() return address state                          */
             } _, SA[U],*MP;      /* _=working set, SA=stack array, SP=stack pointer   */
-    } GAMES;
+    } CHESS;
+    struct {
+        uint8_t board[32][32];
+        SnakeStruct Player1, Player2;
+        uint8_t Fruitx,Fruity;
+    } SNAKE;        
 } TempData;
 
 // Variables that need to be stored in NVM

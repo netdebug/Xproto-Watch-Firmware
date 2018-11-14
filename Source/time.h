@@ -1,3 +1,5 @@
+#ifndef _TIME_H
+#define _TIME_H
 
 #include <stdint.h>
 
@@ -55,3 +57,5 @@ void SetTimeTimer(void);
 #define OCTOBER         10
 #define NOVEMBER        11
 #define DECEMBER        12
+
+#endif

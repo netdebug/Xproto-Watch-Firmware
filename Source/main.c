@@ -147,7 +147,7 @@ const char optionmenutxt[][22] PROGMEM = {           // Menus:
     "Scope   Curve   Meter",    // Oscilloscope
     "I2C      SPI     UART",    // Sniffer
     "Freq   Counter Period",    // Counter
-    "Blocks  Space   Chess",    // Games
+    "Snake   Space   Chess",    // Games
     "Config Diagnose About",
 };
   
@@ -156,7 +156,7 @@ FUSES = {
 	.FUSEBYTE1 = 0x00,  // Watchdog Configuration
 	.FUSEBYTE2 = 0xBF,  // Reset Configuration, BOD off during power down
 	.FUSEBYTE4 = 0xF7,  // 4ms Start-up Configuration
-	.FUSEBYTE5 = 0xDA,  // No EESAVE on chip erase, BOD sampled when active, 2.6V BO level
+	.FUSEBYTE5 = 0xDB,  // No EESAVE on chip erase, BOD sampled when active, 2.4V BO level
 };
 
 // Disable writing to the bootloader section
@@ -273,15 +273,14 @@ int main(void) {
                 from=-101;
             }
             switch(item) {
+                if(testbit(Buttons,K1) || testbit(Buttons,K1) || testbit(Buttons,K1)) { // Prepare to do animation after action
+                    old_item=0; step=15; from=-101;
+                    LowPower();         // Analog off, Slow CPU
+                }
                 case 1:     // Watch Menu
-                    if(testbit(Buttons,K1)) {
-                        Watch();           // go to WATCH
-                        old_item=0; step=15; from=-101;
-                    }
-                    if(testbit(Buttons,K2)) {
-                        Calendar();           // go to WATCH
-                        old_item=0; step=15; from=-101;
-                    }
+                    if(testbit(Buttons,K1)) Watch();
+                    if(testbit(Buttons,K2)) Calendar();
+                    //if(testbit(Buttons,K3)) Tasks();
                 break;
                 case 2:     // Oscilloscope Menu
                     if(testbit(Buttons,K1)) {
@@ -294,8 +293,6 @@ int main(void) {
                         TCD0.CTRLB = 0;
                         TCD0.CCAH = 0;
                         RTC.INTCTRL = 0x05;
-                        LowPower();         // Analog off, Slow CPU
-                        old_item=0; step=15; from=-101;
                     }                        
                 break;
                 case 3:     // Sniffer Menu
@@ -303,22 +300,13 @@ int main(void) {
                 case 4:     // Frequency Counter Menu
                 break;
                 case 5:     // Games Menu
-                    if(testbit(Buttons,K3)) {
-                        CPU_Fast();
-                        CHESS();              // go to Chess
-                        LowPower();         // Analog off, Slow CPU
-                        old_item=0; step=15; from=-101;
-                    }                
+                    if(testbit(Buttons,K1)) { CPU_Fast(); Snake(); }                        
+                    if(testbit(Buttons,K3)) { CPU_Fast(); Chess(); }                
                 break;
                 case 6:     // Settings Menu
-                    if(testbit(Buttons,K2)) {
-                        Diagnose();
-                        old_item=0; step=15; from=-101;
-                    }
-                    if(testbit(Buttons,K3)) {
-                        About();
-                        old_item=0; step=15; from=-101;
-                    }
+                    //if(testbit(Buttons,K1)) Config();
+                    if(testbit(Buttons,K2)) Diagnose();
+                    if(testbit(Buttons,K3)) About();
                 break;
             }
         } else timeout++;
@@ -390,10 +378,10 @@ void WaitDisplay(void) {
 // Tactile Switches - This is configured as medium level interrupt
 ISR(PORTF_INT0_vect) {
     uint8_t i,in,j=0;
-    // Debounce: need to read 25 consecutive equal numbers
+    // Debounce: need to read 10 consecutive equal numbers
     OFFGRN();   // Avoid having the LED on during this interrupt
     OFFRED();
-    for(i=25; i>0; i--) {
+    for(i=10; i>0; i--) {
         delay_ms(1);
 		in = PORTF.IN;              // Read port
 		if(j!=in) { j=in; i=10; }   // Value changed
@@ -934,7 +922,6 @@ void Diagnose(void) {
         lcd_goto(64,5); print16_5x8(batt);
         if(testbit(Misc,userinput)) {
             clrbit(Misc, userinput);
-            setbit(Misc,redraw);
             if(testbit(Buttons,KML)) exit = 1;
             if(testbit(Buttons,K1)) { CalibrateOffset(); setbit(Misc, redraw); }
         }

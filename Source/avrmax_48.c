@@ -161,8 +161,8 @@ void printboard(void) {
     dma_display();
 }
 
-void CHESS(void) {
-    Temp.GAMES.MP=Temp.GAMES.SA+U;  // Initialize engine stack pointer
+void Chess(void) {
+    Temp.CHESS.MP=Temp.CHESS.SA+U;  // Initialize engine stack pointer
     // Timer TCD1: 244.14063Hz
     //PR.PRPD  = 0b11101101;  // Power Reduction: TWI,       , USART1, SPI, HIRES, , TC0
     //TCD1.CTRLA = 0x05;      // Prescaler: clk/64
@@ -271,7 +271,7 @@ B:
 }
 
 /* better readability of working struct variables */
-#define _ Temp.GAMES._
+#define _ Temp.CHESS._
 #define q _.q
 #define l _.l
 #define e _.e
@@ -299,8 +299,8 @@ B:
 #define X _.X
 #define Y _.Y
 #define a _.a
-#define SA Temp.GAMES.SA
-#define MP Temp.GAMES.MP
+#define SA Temp.CHESS.SA
+#define MP Temp.CHESS.MP
 
 void D()                                       /* iterative Negamax search */
 {                       
