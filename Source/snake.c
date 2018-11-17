@@ -15,22 +15,22 @@ void InitSnake(void) {
     uint16_t k=0;
     for(uint8_t i=0; i<32; i++) {
         for(uint8_t j=0; j<32; j++) {
-            Temp.SNAKE.board[i][j]=0;
-            Temp.SNAKE.Player1.x[k]=0;
-            Temp.SNAKE.Player1.y[k]=0;
-            Temp.SNAKE.Player2.x[k]=0;
-            Temp.SNAKE.Player2.y[k]=0;
+            T.SNAKE.board[i][j]=0;
+            T.SNAKE.Player1.x[k]=0;
+            T.SNAKE.Player1.y[k]=0;
+            T.SNAKE.Player2.x[k]=0;
+            T.SNAKE.Player2.y[k]=0;
             k++;
         }
     }
-    Temp.SNAKE.Player1.x[0]=Temp.SNAKE.Player1.x[1]=2;
-    Temp.SNAKE.Player1.y[0]=Temp.SNAKE.Player1.y[1]=2;
-    Temp.SNAKE.Player1.size=2;
-    Temp.SNAKE.Player1.direction = GO_RIGHT;
-    Temp.SNAKE.Player2.x[0]=Temp.SNAKE.Player2.x[1]=29;
-    Temp.SNAKE.Player2.y[0]=Temp.SNAKE.Player2.y[1]=29;
-    Temp.SNAKE.Player2.size=2;
-    Temp.SNAKE.Player2.direction = GO_LEFT;
+    T.SNAKE.Player1.x[0]=T.SNAKE.Player1.x[1]=2;
+    T.SNAKE.Player1.y[0]=T.SNAKE.Player1.y[1]=2;
+    T.SNAKE.Player1.size=2;
+    T.SNAKE.Player1.direction = GO_RIGHT;
+    T.SNAKE.Player2.x[0]=T.SNAKE.Player2.x[1]=29;
+    T.SNAKE.Player2.y[0]=T.SNAKE.Player2.y[1]=29;
+    T.SNAKE.Player2.size=2;
+    T.SNAKE.Player2.direction = GO_LEFT;
 }
 
 // Spawn new fruit
@@ -40,38 +40,44 @@ void NewFruit(void) {
     #define G2 60
     #define Sincrement (G2 - G1)
     do {    /* determine next pixel */
-        Temp.SNAKE.Fruitx = ( Temp.SNAKE.Fruitx + Sincrement ) % G1;
-        Temp.SNAKE.Fruity = ( Temp.SNAKE.Fruity + Sincrement ) % G2;
-    } while ((Temp.SNAKE.Fruitx >=32) || (Temp.SNAKE.Fruity >= 32) ||   // Out of bounds
-      (Temp.SNAKE.board[Temp.SNAKE.Fruitx][Temp.SNAKE.Fruity]!=EMPTY)); // Occupied
-    Temp.SNAKE.board[Temp.SNAKE.Fruitx][Temp.SNAKE.Fruity] = FRUIT;       // New head position
+        T.SNAKE.Fruitx = ( T.SNAKE.Fruitx + Sincrement ) % G1;
+        T.SNAKE.Fruity = ( T.SNAKE.Fruity + Sincrement ) % G2;
+    } while ((T.SNAKE.Fruitx >=32) || (T.SNAKE.Fruity >= 32) ||   // Out of bounds
+      (T.SNAKE.board[T.SNAKE.Fruitx][T.SNAKE.Fruity]!=EMPTY)); // Occupied
+    T.SNAKE.board[T.SNAKE.Fruitx][T.SNAKE.Fruity] = FRUIT;       // New head position
+    if(TCC0.PER>250) TCC0.PERBUF=multfix(TCC0.PER, float2fix(0.9));   // Speed up
 }
 
 void Snake(void) {
-    uint8_t exit=0;
-    Temp.SNAKE.Player1.state = HUMAN_PLAYER1;
-    Temp.SNAKE.Player2.state = NO_PLAYER2;
+    uint8_t p1=HUMAN_PLAYER1, p2=NO_PLAYER2;
+    T.SNAKE.Fruitx = prandom()>>3;
+    T.SNAKE.Fruity = prandom()>>3;
     setbit(MStatus,update);
+    clrbit(WatchBits, goback);
+    clr_display();
     do {
         if(testbit(MStatus, update)) {
             clrbit(MStatus, update);
             if(testbit(Misc,userinput)) {
                 clrbit(Misc, userinput);
-                if(testbit(Buttons, K1)) Temp.SNAKE.Player1.state++; if(Temp.SNAKE.Player1.state>CPU_PLAYER1) Temp.SNAKE.Player1.state=NO_PLAYER1;
-                if(testbit(Buttons, K2)) Temp.SNAKE.Player2.state++; if(Temp.SNAKE.Player2.state>CPU_PLAYER2) Temp.SNAKE.Player2.state=NO_PLAYER2;
-                if(testbit(Buttons, K3)) SnakeEngine();
-                if(testbit(Buttons, KML)) exit=1;
+                if(testbit(Buttons, K1)) p1++; if(p1>CPU_PLAYER1) p1=NO_PLAYER1;
+                if(testbit(Buttons, K2)) p2++; if(p2>CPU_PLAYER2) p2=NO_PLAYER2;
+                if(testbit(Buttons, K3)) {
+                    T.SNAKE.Player1.state = p1;
+                    T.SNAKE.Player2.state = p2;
+                    SnakeEngine();
+                }                    
+                if(testbit(Buttons, KML)) setbit(WatchBits, goback);
             }
-            clr_display_1();
-            lcd_goto(45,0); lcd_put5x8(PSTR("Snake"));
+            lcd_goto(49,0); lcd_put5x8(PSTR("Snake"));
             lcd_goto(0,2); lcd_put5x8(PSTR("Player 1: "));
-            if(Temp.SNAKE.Player1.state==NO_PLAYER1) lcd_put5x8(PSTR("None"));
-            else if(Temp.SNAKE.Player1.state==HUMAN_PLAYER1) lcd_put5x8(PSTR("Human"));
-            if(Temp.SNAKE.Player1.state==CPU_PLAYER1) lcd_put5x8(PSTR("CPU"));
+            if(p1==NO_PLAYER1) lcd_put5x8(PSTR("None "));
+            else if(p1==HUMAN_PLAYER1) lcd_put5x8(PSTR("Human"));
+            if(p1==CPU_PLAYER1) lcd_put5x8(PSTR("CPU  "));
             lcd_goto(0,3); lcd_put5x8(PSTR("Player 2: "));
-            if(Temp.SNAKE.Player2.state==NO_PLAYER2) lcd_put5x8(PSTR("None"));
-            else if(Temp.SNAKE.Player2.state==HUMAN_PLAYER2) lcd_put5x8(PSTR("Human"));
-            if(Temp.SNAKE.Player2.state==CPU_PLAYER2) lcd_put5x8(PSTR("CPU"));
+            if(p2==NO_PLAYER2) lcd_put5x8(PSTR("None "));
+            else if(p2==HUMAN_PLAYER2) lcd_put5x8(PSTR("Human"));
+            if(p2==CPU_PLAYER2) lcd_put5x8(PSTR("CPU  "));
             lcd_goto(0,15); lcd_put5x8(PSTR("Player1 Player2 Start"));
         }
         dma_display();
@@ -79,7 +85,8 @@ void Snake(void) {
         SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
         asm("sleep");
         asm("nop");
-    } while(!exit);
+    } while(!testbit(WatchBits,goback));
+    setbit(MStatus, update);
 }
 
 // Arrays to select only one direction, if more than one direction was selected
@@ -128,14 +135,14 @@ void MoveSnake(SnakeStruct *Player) {
     if(Player->state==CPU_PLAYER1 || Player->state==CPU_PLAYER2) {                          // CPU AI
         uint8_t FruitDirection=0;
         uint8_t GoodDirection=0x0F;
-        if(Player->y[0]>Temp.SNAKE.Fruity) FruitDirection|=GO_UP;                           // Find fruit
-        if(Player->y[0]<Temp.SNAKE.Fruity) FruitDirection|=GO_DOWN;
-        if(Player->x[0]>Temp.SNAKE.Fruitx) FruitDirection|=GO_LEFT;
-        if(Player->x[0]<Temp.SNAKE.Fruitx) FruitDirection|=GO_RIGHT;
-        if(Temp.SNAKE.board[Player->x[0]][Player->y[0]-1]>FRUIT) GoodDirection&=~GO_UP;     // Avoid obstacles
-        if(Temp.SNAKE.board[Player->x[0]][Player->y[0]+1]>FRUIT) GoodDirection&=~GO_DOWN;
-        if(Temp.SNAKE.board[Player->x[0]-1][Player->y[0]]>FRUIT) GoodDirection&=~GO_LEFT;
-        if(Temp.SNAKE.board[Player->x[0]+1][Player->y[0]]>FRUIT) GoodDirection&=~GO_RIGHT;
+        if(Player->y[0]>T.SNAKE.Fruity) FruitDirection|=GO_UP;                           // Find fruit
+        if(Player->y[0]<T.SNAKE.Fruity) FruitDirection|=GO_DOWN;
+        if(Player->x[0]>T.SNAKE.Fruitx) FruitDirection|=GO_LEFT;
+        if(Player->x[0]<T.SNAKE.Fruitx) FruitDirection|=GO_RIGHT;
+        if(T.SNAKE.board[Player->x[0]][Player->y[0]-1]>FRUIT || Player->y[0]==0)  GoodDirection&=~GO_UP;     // Avoid obstacles and out of bounds
+        if(T.SNAKE.board[Player->x[0]][Player->y[0]+1]>FRUIT || Player->y[0]==31) GoodDirection&=~GO_DOWN;
+        if(T.SNAKE.board[Player->x[0]-1][Player->y[0]]>FRUIT || Player->x[0]==0)  GoodDirection&=~GO_LEFT;
+        if(T.SNAKE.board[Player->x[0]+1][Player->y[0]]>FRUIT || Player->x[0]==31) GoodDirection&=~GO_RIGHT;
         FruitDirection &= GoodDirection;                                                    // Don't follow fruit thru obstacles
         if(FruitDirection) {                                                                // A good path to fruit exists
             if((FruitDirection & Player->direction)==0) {                                   // Snake not following fruit already
@@ -147,25 +154,25 @@ void MoveSnake(SnakeStruct *Player) {
         else Player->direction = pgm_read_byte(Direction2+Player->direction);
     }
     if(Player->state) { // Snake alive
-        Temp.SNAKE.board[Player->x[Player->size-1]][Player->y[Player->size-1]] = 0;             // Erase tail from board
-        for(uint16_t i=Player->size-1; i>0; i--) {                                              // Drag body
+        T.SNAKE.board[Player->x[Player->size-1]][Player->y[Player->size-1]] = 0;             // Erase tail from board
+        for(uint16_t i=Player->size-1; i>0; i--) {                                           // Drag body
             Player->x[i]=Player->x[i-1];
             Player->y[i]=Player->y[i-1];
         }
-        Temp.SNAKE.board[Player->x[Player->size-1]][Player->y[Player->size-1]] = Player->state;     // New tail position
+        T.SNAKE.board[Player->x[Player->size-1]][Player->y[Player->size-1]] = Player->state;     // New tail position
         switch(Player->direction) {                                         // Move head
             case GO_UP:    Player->y[0]--; break;
             case GO_DOWN:  Player->y[0]++; break;
             case GO_LEFT:  Player->x[0]--; break;
             case GO_RIGHT: Player->x[0]++; break;
         }
-        if(Temp.SNAKE.board[Player->x[0]][Player->y[0]]>=OBSTACLE ||        // New position is an obstacle or a body
+        if(T.SNAKE.board[Player->x[0]][Player->y[0]]>=OBSTACLE ||        // New position is an obstacle or a body
             Player->x[0]>=32 || Player->y[0]>=32) {                         // Out of boundaries
             Player->state = 0;                                              // Died
             return;
         }            
-        Temp.SNAKE.board[Player->x[0]][Player->y[0]] = Player->state;       // New head position
-        if(Temp.SNAKE.Fruitx==Player->x[0] && Temp.SNAKE.Fruity==Player->y[0]) {  // Got Fruit!
+        T.SNAKE.board[Player->x[0]][Player->y[0]] = Player->state;       // New head position
+        if(T.SNAKE.Fruitx==Player->x[0] && T.SNAKE.Fruity==Player->y[0]) {  // Got Fruit!
             if(Player->size<=(32*32)) {
                 Player->x[Player->size]=Player->x[Player->size-1];          // Extend tail
                 Player->y[Player->size]=Player->y[Player->size-1];
@@ -174,9 +181,9 @@ void MoveSnake(SnakeStruct *Player) {
             }                
         }
     } else {
-        if(Player->size>3) {
-            Temp.SNAKE.board[Player->x[Player->size-1]][Player->y[Player->size-1]] = 0; // Erase tail from board
-            Player->size--;                               // Shrink if dead
+        if(Player->size>3) {    // Shrink if dead
+            T.SNAKE.board[Player->x[Player->size-1]][Player->y[Player->size-1]] = 0; // Erase tail from board
+            Player->size--;
         }            
     }        
 }
@@ -186,34 +193,34 @@ void SnakeBoard(void) {
     for(uint8_t i=0; i<32; i++) {
         for(uint8_t j=0; j<32; j++) {
             x=i*4; y=j*4;
-            switch(Temp.SNAKE.board[i][j]) {
+            switch(T.SNAKE.board[i][j]) {
                 case  EMPTY:
                 break;
                 case FRUIT:
-                                      set_pixel(x+1,y  ); set_pixel(x+2,y  ); 
-                    set_pixel(x,y+1);                                         set_pixel(x+3,y+1);
-                    set_pixel(x,y+2);                                         set_pixel(x+3,y+2);
-                                      set_pixel(x+1,y+3); set_pixel(x+2,y+3); 
+                                      pixel(x+1,y  ,255); pixel(x+2,y  ,255); 
+                    pixel(x,y+1,255);                                         pixel(x+3,y+1,255);
+                    pixel(x,y+2,255);                                         pixel(x+3,y+2,255);
+                                      pixel(x+1,y+3,255); pixel(x+2,y+3,255); 
                 break;
                 case HUMAN_PLAYER1:
                 case CPU_PLAYER1:
-                    set_pixel(x,y  ); set_pixel(x+1,y  ); set_pixel(x+2,y  ); set_pixel(x+3,y  );
-                    set_pixel(x,y+1);                                         set_pixel(x+3,y+1);
-                    set_pixel(x,y+2);                                         set_pixel(x+3,y+2);
-                    set_pixel(x,y+3); set_pixel(x+1,y+3); set_pixel(x+2,y+3); set_pixel(x+3,y+3);
+                    pixel(x,y  ,255); pixel(x+1,y  ,255); pixel(x+2,y  ,255); pixel(x+3,y  ,255);
+                    pixel(x,y+1,255);                                         pixel(x+3,y+1,255);
+                    pixel(x,y+2,255);                                         pixel(x+3,y+2,255);
+                    pixel(x,y+3,255); pixel(x+1,y+3,255); pixel(x+2,y+3,255); pixel(x+3,y+3,255);
                 break;
                 case HUMAN_PLAYER2:
                 case CPU_PLAYER2:
-                    set_pixel(x,y  ); set_pixel(x+1,y  ); set_pixel(x+2,y  ); set_pixel(x+3,y  );
-                    set_pixel(x,y+1); set_pixel(x+1,y+1); set_pixel(x+2,y+1); set_pixel(x+3,y+1);
-                    set_pixel(x,y+2); set_pixel(x+1,y+2); set_pixel(x+2,y+2); set_pixel(x+3,y+2);
-                    set_pixel(x,y+3); set_pixel(x+1,y+3); set_pixel(x+2,y+3); set_pixel(x+3,y+3);
+                    pixel(x,y  ,255); pixel(x+1,y  ,255); pixel(x+2,y  ,255); pixel(x+3,y  ,255);
+                    pixel(x,y+1,255); pixel(x+1,y+1,255); pixel(x+2,y+1,255); pixel(x+3,y+1,255);
+                    pixel(x,y+2,255); pixel(x+1,y+2,255); pixel(x+2,y+2,255); pixel(x+3,y+2,255);
+                    pixel(x,y+3,255); pixel(x+1,y+3,255); pixel(x+2,y+3,255); pixel(x+3,y+3,255);
                 break;
                 default:
-                                      set_pixel(x+1,y  );                     set_pixel(x+3,y  );
-                    set_pixel(x,y+1);                     set_pixel(x+2,y+1); 
-                                      set_pixel(x+1,y+2);                     set_pixel(x+3,y+2);
-                    set_pixel(x,y+3);                     set_pixel(x+2,y+3);
+                                      pixel(x+1,y  ,255);                     pixel(x+3,y  ,255);
+                    pixel(x,y+1,255);                     pixel(x+2,y+1,255); 
+                                      pixel(x+1,y+2,255);                     pixel(x+3,y+2,255);
+                    pixel(x,y+3,255);                     pixel(x+2,y+3,255);
                 break;
             }
         }
@@ -221,35 +228,59 @@ void SnakeBoard(void) {
 }
 
 void SnakeEngine(void) {
+    PR.PRPC  &= 0b11111110;         // Enable TCC0 clock
+    TCC0.PER = 15626;               // 1Hz
+    TCC0.CTRLA = 5;                 // 31.25kHz clock
     InitSnake();
     NewFruit();
-    uint8_t exit=0;
+    clrbit(WatchBits, goback);
     setbit(MStatus,update);
     do {
         if(testbit(Misc,userinput)) {
             clrbit(Misc, userinput);
-            if(testbit(Buttons, KML)) exit=1;
+            if(testbit(Buttons, KML)) setbit(WatchBits, goback);
             if(testbit(Buttons, KBL)) {
-                if(Temp.SNAKE.Player1.direction==GO_UP) Temp.SNAKE.Player1.direction=GO_LEFT;
-                else if(Temp.SNAKE.Player1.direction==GO_DOWN) Temp.SNAKE.Player1.direction=GO_RIGHT;
-                else if(Temp.SNAKE.Player1.direction==GO_LEFT) Temp.SNAKE.Player1.direction=GO_DOWN;
-                else if(Temp.SNAKE.Player1.direction==GO_RIGHT) Temp.SNAKE.Player1.direction=GO_UP;
+                if(T.SNAKE.Player1.direction==GO_UP) T.SNAKE.Player1.direction=GO_LEFT;
+                else if(T.SNAKE.Player1.direction==GO_DOWN) T.SNAKE.Player1.direction=GO_RIGHT;
+                else if(T.SNAKE.Player1.direction==GO_LEFT) T.SNAKE.Player1.direction=GO_DOWN;
+                else if(T.SNAKE.Player1.direction==GO_RIGHT) T.SNAKE.Player1.direction=GO_UP;
             }
             else if(testbit(Buttons, KBR)) {
-                if(Temp.SNAKE.Player1.direction==GO_UP) Temp.SNAKE.Player1.direction=GO_RIGHT;
-                else if(Temp.SNAKE.Player1.direction==GO_DOWN) Temp.SNAKE.Player1.direction=GO_LEFT;
-                else if(Temp.SNAKE.Player1.direction==GO_LEFT) Temp.SNAKE.Player1.direction=GO_UP;
-                else if(Temp.SNAKE.Player1.direction==GO_RIGHT) Temp.SNAKE.Player1.direction=GO_DOWN;
+                if(T.SNAKE.Player1.direction==GO_UP) T.SNAKE.Player1.direction=GO_RIGHT;
+                else if(T.SNAKE.Player1.direction==GO_DOWN) T.SNAKE.Player1.direction=GO_LEFT;
+                else if(T.SNAKE.Player1.direction==GO_LEFT) T.SNAKE.Player1.direction=GO_UP;
+                else if(T.SNAKE.Player1.direction==GO_RIGHT) T.SNAKE.Player1.direction=GO_DOWN;
+            }
+            if(testbit(Buttons, KUL)) {
+                if(T.SNAKE.Player2.direction==GO_UP) T.SNAKE.Player2.direction=GO_LEFT;
+                else if(T.SNAKE.Player2.direction==GO_DOWN) T.SNAKE.Player2.direction=GO_RIGHT;
+                else if(T.SNAKE.Player2.direction==GO_LEFT) T.SNAKE.Player2.direction=GO_DOWN;
+                else if(T.SNAKE.Player2.direction==GO_RIGHT) T.SNAKE.Player2.direction=GO_UP;
+            }
+            else if(testbit(Buttons, KUR)) {
+                if(T.SNAKE.Player2.direction==GO_UP) T.SNAKE.Player2.direction=GO_RIGHT;
+                else if(T.SNAKE.Player2.direction==GO_DOWN) T.SNAKE.Player2.direction=GO_LEFT;
+                else if(T.SNAKE.Player2.direction==GO_LEFT) T.SNAKE.Player2.direction=GO_UP;
+                else if(T.SNAKE.Player2.direction==GO_RIGHT) T.SNAKE.Player2.direction=GO_DOWN;
             }
         }
-        clr_display_1();
-        if(Temp.SNAKE.Player1.state!=NO_PLAYER1) MoveSnake(&Temp.SNAKE.Player1);
-        if(Temp.SNAKE.Player2.state!=NO_PLAYER2) MoveSnake(&Temp.SNAKE.Player2);
-        SnakeBoard();
-        dma_display();
-        WaitDisplay();
-        SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
-        asm("sleep");
-        asm("nop");
-    } while(!exit);
+        if(TCC0.INTFLAGS&0x01) {    // Limit speed
+            TCC0.INTFLAGS=1;
+            clr_display();
+            if(T.SNAKE.Player1.state!=NO_PLAYER1) MoveSnake(&T.SNAKE.Player1);
+            if(T.SNAKE.Player2.state!=NO_PLAYER2) MoveSnake(&T.SNAKE.Player2);
+            SnakeBoard();
+            WaitDisplay();    
+            dma_display();
+            SwitchBuffers();
+            if(T.SNAKE.Player1.state==0 && T.SNAKE.Player2.state==0) {
+                setbit(WatchBits, goback);
+                lcd_goto(38,13); lcd_put5x8(PSTR("Game Over"));
+            }
+        }
+    } while(!testbit(WatchBits,goback));
+    clrbit(WatchBits, goback);
+    setbit(MStatus, update);
+    TCC0.CTRLA = 0;
+    PR.PRPC |= 0b00000001;         // Disable TCC0 TCC1C clocks
 }

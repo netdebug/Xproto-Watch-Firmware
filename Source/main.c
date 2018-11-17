@@ -3,14 +3,13 @@
 Oscilloscope Watch
 
 Gabotronics
-October 2018
+November 2018
 
 Copyright 2018 Gabriel Anzziani
 
 This program is distributed under the terms of the GNU General Public License
 
-ATXMEGA256A3U
-
+Target: ATXMEGA256A3U
 Compiled with GCC, -Os optimizations
 
 www.gabotronics.com
@@ -134,21 +133,17 @@ email me at: gabriel@gabotronics.com
 #include "build.h"
 
 const char mainmenutxt[][18] PROGMEM = {           // Menus:
-    "  Digital Watch  ",    // Watch
-    "  Oscilloscope   ",    // Oscilloscope
-    "Protocol Sniffer ",    // Sniffer
-    "Frequency Counter",    // Counter
-    "      Games      ",    // Games
-    "     Settings    ",
+    "Digital Watch",    // Watch
+    "Oscilloscope ",    // Oscilloscope
+    "    Games    ",    // Games
+    "   Settings  ",    // Settings
 };
 
 const char optionmenutxt[][22] PROGMEM = {           // Menus:
     "Time  Calendar  Tasks",    // Watch
-    "Scope   Curve   Meter",    // Oscilloscope
-    "I2C      SPI     UART",    // Sniffer
-    "Freq   Counter Period",    // Counter
-    "Snake   Space   Chess",    // Games
-    "Config Diagnose About",
+    "Load    Save    Start",    // Oscilloscope
+    "Snake    Pong   Chess",    // Games
+    "Config Diagnose About",    // Settings
 };
   
 FUSES = {
@@ -167,7 +162,7 @@ static inline void Restore(void);
 //uint16_t readVCC(void);
 
 // Big buffer to store large but temporary data
-TempData Temp;
+TempData T;
 
 // Variables that need to be saved in NVM
 NVMVAR M;
@@ -246,36 +241,25 @@ int main(void) {
     PMIC.CTRL = 0x07;               // Enable High, Medium and Low level interrupts
     sei();                          // Enable global interrupts    
 
+    Randomize();                    // Randomize random number generator
     About();                        // Go to About on startup
     RST.STATUS = 0x3F;              // Clear Reset flags
     Watch();                        // Go to watch mode after reset
     clrbit(Misc, userinput);
     
     Buttons=K1;
-    uint8_t item=1;   // Menu item
+    Menu=1;   // Menu item
     uint8_t old_item=0;
-    int8_t step=15,from=-101;
 	uint8_t timeout=0;
     for(;;) {
         // Check User Input
         if(testbit(Misc, userinput)) {
             clrbit(Misc, userinput);
-            old_item=item;;
-            if(testbit(Buttons,KUR) || testbit(Buttons,KBR)) {
-                item++;
-                if(item>6) item=1;
-                step=-15;
-                from=133;                
-            }
-            if(testbit(Buttons,KUL) || testbit(Buttons,KBL)) {
-                if(item<=1) item=6; else item--;
-                step=15;
-                from=-101;
-            }
-            switch(item) {
+            if(testbit(Buttons,KUR) || testbit(Buttons,KBR)) Menu++;
+            if(testbit(Buttons,KUL) || testbit(Buttons,KBL)) Menu--;
+            switch(Menu) {
                 if(testbit(Buttons,K1) || testbit(Buttons,K1) || testbit(Buttons,K1)) { // Prepare to do animation after action
-                    old_item=0; step=15; from=-101;
-                    LowPower();         // Analog off, Slow CPU
+                    old_item=255;
                 }
                 case 1:     // Watch Menu
                     if(testbit(Buttons,K1)) Watch();
@@ -283,7 +267,7 @@ int main(void) {
                     //if(testbit(Buttons,K3)) Tasks();
                 break;
                 case 2:     // Oscilloscope Menu
-                    if(testbit(Buttons,K1)) {
+                    if(testbit(Buttons,K3)) {
                         AnalogOn();
                         RTC.INTCTRL = 0x00;                     // Disable RTC interrupts
                         // During the Scope mode, TCD0 will generate 1Hz for the Memory LCD EXTCOMM
@@ -295,63 +279,65 @@ int main(void) {
                         RTC.INTCTRL = 0x05;
                     }                        
                 break;
-                case 3:     // Sniffer Menu
+                case 3:     // Games Menu
+                    if(testbit(Buttons,K1)) Snake();
+                    if(testbit(Buttons,K2)) Pong();
+                    if(testbit(Buttons,K3)) { CPU_Fast(); Chess(); }
                 break;
-                case 4:     // Frequency Counter Menu
-                break;
-                case 5:     // Games Menu
-                    if(testbit(Buttons,K1)) { CPU_Fast(); Snake(); }                        
-                    if(testbit(Buttons,K3)) { CPU_Fast(); Chess(); }                
-                break;
-                case 6:     // Settings Menu
+                case 4:     // Settings Menu
                     //if(testbit(Buttons,K1)) Config();
                     if(testbit(Buttons,K2)) Diagnose();
                     if(testbit(Buttons,K3)) About();
                 break;
             }
         } else timeout++;
-        if(item!=old_item) {
+        if(testbit(MStatus, update)) {
+            int8_t step, from;
+            if(Menu>old_item) { step=-15; from=133; }
+            else { step=15; from=-101; }
+            LowPower();         // Analog off, Slow CPU
             Sound(NOTE_B7,NOTE_B7);
             for(int8_t n=step; n<118 && n>-118; n+=step) {	// Slide animation
                 if(testbit(Misc, userinput)) {   // Button pressed during animation
                     clrbit(Misc, userinput);
                     Sound(NOTE_B7,NOTE_B7);
-                    old_item=item;;
+                    old_item=Menu;
                     if(testbit(Buttons,KUR) || testbit(Buttons,KBR)) {
-                        item++;
-                        if(item>6) item=1;
+                        Menu++;
                         n=step=-15;
                         from=133;
                     }
                     if(testbit(Buttons,KUL) || testbit(Buttons,KBL)) {
-                        if(item<=1) item=6; else item--;
+                        Menu--;
                         n=step=15;
                         from=-101;
                     }                
-                }                
+                }
+                if(Menu>4) Menu=1;
+                if(Menu==0) Menu=4; 
                 if(step>1) step--;
                 if(step<-1) step++;
                 dma_display();
                 SwitchBuffers();
                 clr_display();
                 bitmap_safe(16+n,4,(uint8_t *)pgm_read_word(Icons+old_item),1);
-                bitmap_safe(from+n,4,(uint8_t *)pgm_read_word(Icons+item),5);
+                bitmap_safe(from+n,4,(uint8_t *)pgm_read_word(Icons+Menu),5);
                 WaitDisplay();
                 SoundOff();
             }
-            lcd_goto(16,2);
-            lcd_put5x8(mainmenutxt[item-1]);
+            lcd_goto(28,2);
+            lcd_put5x8(mainmenutxt[Menu-1]);
             lcd_goto(0,15);
-            lcd_put5x8(optionmenutxt[item-1]);
+            lcd_put5x8(optionmenutxt[Menu-1]);
             WaitDisplay();
             dma_display();
-            old_item=item;
-            timeout=0;  
-        }
-        if(timeout>=250) {
+            old_item=Menu;
             timeout=0;
-            bitmap_safe((qrandom()>>1)-48,(qrandom()>>4)-(int8_t)(qrandom()>>6),(uint8_t *)pgm_read_word(Icons+item),5);
-            //bitmap_safe(prandom()>>1,prandom()>>1,(uint8_t *)pgm_read_word(Chessbmps+(prandom()>>5)),5);   
+            clrbit(MStatus, update);
+        }
+        if(timeout>=250) {  // Screen saver. Draw icon the icon all over the screen
+            timeout=0;
+            bitmap_safe((qrandom()>>1)-48,(qrandom()&0x0F)-4,(uint8_t *)pgm_read_word(Icons+Menu),5);
             dma_display();
         }
         WaitDisplay();
@@ -411,9 +397,7 @@ ISR(TCC2_HUNF_vect) {
 }
 
 void CPU_Fast(void) {
-    // Use main LCD buffer
-    Disp_send.buffer=Disp_send.display_data+127*18;
-    Disp_send.spidata=Disp_send.display_setup;
+    SetMainBuffer();        // Use main LCD buffer
     // Clock Settings
     OSC.XOSCCTRL = 0xCB;    // Crystal type 0.4-16 MHz XTAL - 16K CLK Start Up time
     OSC.PLLCTRL = 0xC2;     // XOSC is PLL Source - 2x Factor (32MHz)
@@ -552,8 +536,8 @@ void CalibrateOffset(void) {
                 M.CH1gain=i;
                 M.CH2gain=i;
                 SimpleADC();
-                q1=Temp.IN.CH1;
-                q2=Temp.IN.CH2;
+                q1=T.IN.CH1;
+                q2=T.IN.CH2;
                 // Calculate offset for CH1
                 avrg1=0;
                 avrg2=0;
@@ -827,6 +811,7 @@ void delay_ms(uint16_t n) {
 
 // Dual Tone sound
 void Sound(uint8_t F1, uint8_t F2) {
+    if(testbit(WSettings,sound_off)) return;
     PR.PRPE  &= 0b11111110;         // Enable TC1E clock
     TCE0.CTRLE = 0x02;              // Timer TCE0 Split Mode
     TCE0.CTRLB = 0b00100001;        // Enable output compares, H->B, L->A
@@ -892,10 +877,11 @@ int16_t MeasureBattery(uint8_t scale) {
 }
 
 void Diagnose(void) {
-    uint8_t exit=0, bar=0;
+    uint8_t bar=0;
     int16_t batt=0;
-    setbit(Misc,redraw);
+    setbit(MStatus, update);
     setbit(Misc,bigfont);
+    clrbit(WatchBits,goback);
     do {
         uint8_t temp = TCF0.CNTL;
         batt = MeasureBattery(1);
@@ -903,8 +889,8 @@ void Diagnose(void) {
         else if((temp&0x03) == 1) ONGRN();
         else if((temp&0x03) == 2) ONRED();
         else Sound(NOTE_B7,NOTE_B7);
-        if(testbit(Misc,redraw)) {
-            clrbit(Misc, redraw);
+        if(testbit(MStatus, update)) {
+            clrbit(MStatus, update);
             clr_display();
             lcd_goto(0,0);
             lcd_put5x8(VERSION); lcd_put5x8(PSTR(" Build: "));
@@ -922,7 +908,7 @@ void Diagnose(void) {
         lcd_goto(64,5); print16_5x8(batt);
         if(testbit(Misc,userinput)) {
             clrbit(Misc, userinput);
-            if(testbit(Buttons,KML)) exit = 1;
+            if(testbit(Buttons,KML)) setbit(WatchBits,goback);
             if(testbit(Buttons,K1)) { CalibrateOffset(); setbit(Misc, redraw); }
         }
         u8CursorX=0; u8CursorY=bar;
@@ -935,7 +921,8 @@ void Diagnose(void) {
         SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
         asm("sleep");
         asm("nop");
-    } while(!exit);
+    } while(!testbit(WatchBits,goback));
+    setbit(MStatus, update);
 }
 
 void About(void) {
@@ -962,4 +949,5 @@ void About(void) {
         asm("nop");
     } while(!testbit(Misc,userinput));
     clrbit(Misc, userinput);
+    setbit(MStatus, update);
 }

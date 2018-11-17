@@ -32,38 +32,7 @@
 #include "main.h"
 #include "utils.h"
 
-// Chess application variables
-typedef union {
-    unsigned char c[4];
-} TIMER;
-
-volatile TIMER timer;       // wird alle 4.096ms erhoeht
-unsigned char st=0;         // Level (Sets thinking time)
-
-void putled(unsigned char ndx, unsigned char c) {
-    //lcd_goto(ndx,15);
-    //putchar5x8(c);
-}
-
-unsigned char getkey(void) {
-    unsigned char ch;
-  
-    while (!Buttons) {
-    //    sleep cpu
-    }
-    // keycode to ASCII
-//    ch = pgm_read_byte(&Letter[key-1]);
-    Buttons = 0;
-    return ch;
-}
-
-void clean() {
-    putled(0, ' ');putled(1, ' ');putled(2, ' ');putled(3, ' ');
-}
-
-void bold() {
-//    led[0]&=0x7F;led[1]&=0x7F;led[2]&=0x7F;led[3]&=0x7F;
-}
+void Cursor(uint8_t x, uint8_t y, uint8_t c);
 
 /***************************************************************************/
 /*                               micro-Max,                                */
@@ -109,12 +78,10 @@ unsigned char L,                               /* input move, target square*/
 O,                                          /* pass e.p. flag at game level*/
 k,                                          /* moving side 8=white 16=black*/
 b[129],                                        /* board: half of 16x8+dummy*/
-c[5],                                          /* input move ASCII buffer  */     
 R,                                          /* captured non pawn material  */
 W,                                           /* @ temporary                */
 DE,Dz,Dn,                                      /* D() arguments            */
-Da,                                            /* D() state                */
-hv;                                            /* zeige Hauptvariante      */
+Da;                                            /* D() state                */
 
 unsigned short r = 1;                     /* pseudo random generator seed */
 
@@ -123,6 +90,42 @@ unsigned short r = 1;                     /* pseudo random generator seed */
 #define w(ndx)	(signed char)pgm_read_word(w+(ndx))
 
 void D();
+void PlayChess(void) ;
+
+void Chess(void) {
+    uint8_t p=2;
+    setbit(MStatus,update);
+    clrbit(WatchBits,goback);
+    T.CHESS.level=0;
+    clr_display();
+    do {
+        if(testbit(MStatus, update)) {
+            clrbit(MStatus, update);
+            if(testbit(Misc,userinput)) {
+                clrbit(Misc, userinput);
+                if(testbit(Buttons, K1)) p++; if(p>3) p=0;
+                if(testbit(Buttons, K2)) { if(++T.CHESS.level>=16) T.CHESS.level=0; }
+                if(testbit(Buttons, K3)) PlayChess();
+                if(testbit(Buttons, KML)) setbit(WatchBits, goback);
+            }
+            lcd_goto(50,0); lcd_put5x8(PSTR("Chess"));
+            lcd_goto(0,2); lcd_put5x8(PSTR("Player 1: "));
+            if(p&0x01) { lcd_put5x8(PSTR("CPU  ")); T.CHESS.Player1 = CPU_PLAYER1; }
+            else       { lcd_put5x8(PSTR("Human")); T.CHESS.Player1 = HUMAN_PLAYER1; }
+            lcd_goto(0,3); lcd_put5x8(PSTR("Player 2: "));
+            if(p&0x02) { lcd_put5x8(PSTR("CPU  ")); T.CHESS.Player2 = CPU_PLAYER1; }
+            else       { lcd_put5x8(PSTR("Human")); T.CHESS.Player2 = HUMAN_PLAYER1; }
+            lcd_goto(0,4); lcd_put5x8(PSTR("Level: ")); printN_5x8(T.CHESS.level);
+            lcd_goto(0,15); lcd_put5x8(PSTR("Players  Level  Start"));
+        }
+        dma_display();
+        WaitDisplay();
+        SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
+        asm("sleep");
+        asm("nop");
+    } while(!testbit(WatchBits, goback));
+    setbit(MStatus, update);
+}
 
 void printboard(void) {
     uint8_t c,i=0,color=0,piece,x,y;
@@ -140,7 +143,6 @@ void printboard(void) {
     do {
         if(i&8) { i+=7; y+=2; x=1; color++; }
         else {
-      //putchar5x8(".?pnkbrq?P?NKBRQ"[b[i]&15]);
             piece=("@@GHIJKL@A@BCDEF"[b[i]&15])-'@';
             if(piece) {
                 c=testbit(color,0);
@@ -158,120 +160,120 @@ void printboard(void) {
             color++;
         }
     } while(++i<128);
-    dma_display();
 }
 
-void Chess(void) {
-    Temp.CHESS.MP=Temp.CHESS.SA+U;  // Initialize engine stack pointer
-    // Timer TCD1: 244.14063Hz
-    //PR.PRPD  = 0b11101101;  // Power Reduction: TWI,       , USART1, SPI, HIRES, , TC0
-    //TCD1.CTRLA = 0x05;      // Prescaler: clk/64
-    //TCD1.PER   = 2047;      // 244.14063Hz
-    //TCD1.INTCTRLA = 0x02;   // Timer overflow is a medium level interrupt
-    Buttons=0;
-    for(;;) { 
-A:
-        k=16;O=Q=R=0;
-        for(W=0;W<sizeof b;++W)b[W]=0;
-        W=8;
-        while(W--) {
-            b[W]=(b[W+112]=o(W+24)+8)+8;b[W+16]=18;b[W+96]=9; /* initial board setup*/
-            L=8;while(L--)
-            b[16*L+W+8]=(W-4)*(W-4)+(L+L-7)*(L+L-7)/4;       /* center-pts table   */
+void Cursor(uint8_t x, uint8_t y, uint8_t c) {
+    uint8_t color=0;
+    if(c==0) {  if((x+y+1)&0x01) color=255; }   // Erase
+    if(c==1) {  if((x+y)  &0x01) color=255; }   // Draw
+    if(c==2) {  color=1; }                      // Toggle
+    Rectangle(x*15+1,y*16+1,x*15+13,y*16+14,color);
+}                
+
+void PlayChess(void) {
+    uint8_t newx=0, newy=0, oldx=0, oldy=0, selx=255, sely=255, lastx=255, lasty=255;
+    uint8_t *player;
+    player = &T.CHESS.Player1;
+    T.CHESS.MP=T.CHESS.SA+U;  // Initialize engine stack pointer
+    clrbit(WatchBits,goback);
+    k=16;DD=O=Q=R=0;
+    
+    for(uint8_t i=0; i<sizeof b; ++i) b[i]=0;
+    W=8;
+    while(W--) {
+        b[W]=(b[W+112]=o(W+24)+8)+8;b[W+16]=18;b[W+96]=9; /* initial board setup*/
+        L=8;while(L--)
+        b[16*L+W+8]=(W-4)*(W-4)+(L+L-7)*(L+L-7)/4;       /* center-pts table   */
         }                                                  /*(in unused half b[])*/
-
-        do {                                                /* play loop          */
+    do {
+        while(DD>-I+1 && !testbit(WatchBits,goback)) {    // Until checkmate
             printboard();
-            W = 4;
-            if(Buttons) return;
-            else {
-                for(;;) {
-                    switch (c[W] = '#'/*getkey()*/) {
-                        case '9':
-                            putled(0, 'F');putled(1, 'N');putled(2, ' ');putled(3, ' ');
-                            switch (L = getkey()) {
-                                case '1': goto A; break;      // Neues Spiel (new game)
-                                case '2':                     // Spielstufe (set level)
-                                    for(;;) {
-                                        putled(0, 'S');putled(1, 'T');putled(3, st+'1');
-                                        if ('#' == (L = getkey())) break;
-                                        st=L-'1';
-                                    }
-                                break;
-                                case '3':                     // edit variant
-                                    for(;;) {
-                                        putled(0, 'H');putled(1, 'V');putled(3, hv+'0');
-                                        if ('#' == (L = getkey())) break;
-                                        hv=L&1;
-                                    }
-                                break;
-                            }
-                        // no break
-                        case '*': if(W==0) {
-                                    TCD1.INTCTRLA = 0;  // disable timer interrupt
-                                    return;
-                                 }
-                                 else W=5; break;
-                        case '#': goto B; break;
-                    }
-                    if (!(W&1)) {          // true when W is (0, 2, 4)
-                        c[W] += 'a' - '1';
-                    }
-                    switch (W) {
-                        default:
-    	                    putled(W, c[W]);
-    	                    ++W;
-                        break;
-                        case 4:                 // getkey()
-    	                    clean();
-	                        c[0]=c[4];
-	                        putled(0, c[0]);
-	                        W=1;
-                        break;
-                        case 5:                 // getkey()
-    	                    clean();
-                            W=0;
-                        break;
-                    }
-                }
+            if(player==&T.CHESS.Player1) {
+                Rectangle(122,2,127,7,0);
+                Rectangle(122,120,127,125,255);
+            } else {
+                Rectangle(122,2,127,7,255);
+                Rectangle(122,120,127,125,0);
             }
-B:
-            printboard();
-
-            if(c[0]!='#')K=*c-16*c[1]+799,L=c[2]-16*c[3]+799;     /* parse entered move */
+            if(lastx<8 && lasty<8) Cursor(lastx, lasty, 1);
+            if(testbit(Buttons, KML)) setbit(WatchBits, goback);
+            if(*player==HUMAN_PLAYER1) {
+                clrbit(WatchBits, blink);   // Use blink bit as Enter
+                do {                        // Get user input
+                    if(testbit(Misc,userinput)) {
+                        clrbit(Misc, userinput);
+                        if(testbit(Buttons, KML)) setbit(WatchBits, goback);
+                        if(testbit(Buttons, KBL)) newx--;
+                        if(testbit(Buttons, KBR)) newx++;
+                        if(testbit(Buttons, KUL)) newy--;
+                        if(testbit(Buttons, KUR)) newy++;
+    //                    if(testbit(Buttons, K1))  setbit(WatchBits, blink);   // Signal move ready
+                        if(testbit(Buttons, K2)) {  // Select / Deselect
+                            if(newx==selx && newy==sely) {  // Deselect
+                                Cursor(selx, sely, 0);
+                                selx=255; sely=255;
+                            }
+                            else {                          // Select
+                                if(selx==255 || sely==255) {    // 1st selection
+                                    K = newx + newy*16;         // Encode position
+                                    selx=newx; sely=newy;
+                                } else {                        // 2nd selection
+                                    L = newx + newy*16;         // Encode position
+                                    selx=255; sely=255;
+                                    setbit(WatchBits, blink);   // Signal move ready
+                                }
+                                Cursor(selx, sely, 1);
+                            }                          
+                        }
+                    }
+                    if(newx==255) newx=7; else if(newx>7) newx=0;
+                    if(newy==255) newy=7; else if(newy>7) newy=0;
+                    if(oldx!=newx || oldy!=newy) {          // Erase old rectangle
+                        uint8_t color=0;
+                        if(oldx==selx && oldy==sely) color=1;   // Leave on if selected
+                        Cursor(oldx, oldy, color);
+                        oldx=newx; oldy=newy;
+                    }
+                    Cursor(newx,newy,2);        // Toggle cursor
+                    dma_display();
+                    WaitDisplay();
+                    OFFRED();
+                    SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
+                    asm("sleep");
+                    asm("nop");
+                } while(!(testbit(WatchBits, goback) || testbit(WatchBits, blink)));
+            }            
             else {
-                K=I;
-                cli();                  // Interrupts sperren
-                N = 128<<st;            // set time control (thinking time)
+                K=I;                    // Computer move
+                N = 128<<T.CHESS.level; // set time control (thinking time)
                 N += qrandom();         // Add some randomness to time
-                sei();                   // Interrupts erlauben
-                clean();
-                if (hv) { bold(); }
+                dma_display();
             }
             Dq=-I;Dl=I;De=Q;DE=O;Dz=1;Dn=3;               /* store arguments of D() */
             Da=0;                                         /* state */
-            D();                                          /* accept human move */
-            if(*c-'#') {          // Input available
+            D();                                          /* move */
+            if(*player==HUMAN_PLAYER1) {          // Human move
                 if(I==DD) {         // input valid
-                    bold();
+                    if(player==&T.CHESS.Player1) player=&T.CHESS.Player2;
+                    else player=&T.CHESS.Player1;
                 }
-                else {            // .. ungueltig
-                    putled(0, 'N');putled(1, 'o');putled(2, 't');putled(3, 'V');
-                } 	
-                *c='#';
+                else {            // invalid
+                   ONRED();
+                }
             }
             else {             // Computer move
-                putled(0,'a'+(K&7));putled(1,'8'-(K>>4));  
-                putled(2,'a'+(L&7));putled(3,'8'-(L>>4&7)); 
+                if(player==&T.CHESS.Player1) player=&T.CHESS.Player2;
+                else player=&T.CHESS.Player1;                
             }   
-        } while(DD>-I+1);
-        putled(0, 'M');putled(1, 'A'); putled(2, 'T');putled(3, 'T');
-        getkey();
-    }
+            lastx = L&0x07;
+            lasty = L>>4;
+        }
+        if(testbit(Buttons, KML)) setbit(WatchBits, goback);
+    } while(!testbit(WatchBits,goback));
 }
 
 /* better readability of working struct variables */
-#define _ Temp.CHESS._
+#define _ T.CHESS._
 #define q _.q
 #define l _.l
 #define e _.e
@@ -299,8 +301,8 @@ B:
 #define X _.X
 #define Y _.Y
 #define a _.a
-#define SA Temp.CHESS.SA
-#define MP Temp.CHESS.MP
+#define SA T.CHESS.SA
+#define MP T.CHESS.MP
 
 void D()                                       /* iterative Negamax search */
 {                       
@@ -316,7 +318,7 @@ D:if (--MP<SA) {               /* stack pointer decrement and underrun check */
  X=0;//myrand()&~M;                                /* start at random field    */
 
  while(d++<n||d<3||                            /* iterative deepening loop */
-   z&K==I&&(N>=0&d<98||                        /* root: deepen upto time   */
+   z&K==I&&(N>=0&d<98||                         /* root: deepen upto time   */
    (K=X,L=Y&~M,d=3)))                          /* time's up: go do best    */
  {x=B=X;                                       /* start scan at prev. best */
   h=Y&S;                                       /* request try noncastl. 1st*/
@@ -394,18 +396,6 @@ R1:      _=*MP;s=-DD;                           /* load locals, return value*/
   }}}while((x=x+9&~M)-B);                      /* next sqr. of board, wrap */
 J:if(m>I-M|m<M-I)d=98;                         /* mate holds to any depth  */
   m=m+I|P==I?m:0;                              /* best loses K: (stale)mate*/
-#ifndef __unix__  
-   if(z&hv&d>2)                                   
-   {putled(0,'a'+(X&7));putled(1,'8'-(X>>4));  /* show Principal variation */
-    putled(2,'a'+(Y&7));putled(3,'8'-(Y>>4&7)); 
-   }
-#else   
-   if(z&d>2)
-   {printf("%2d ply, %9ld searched, score=%6d by %c%c%c%c\n",
-     d-1,timer.w-(-128<<st),m,
-     'a'+(X&7),'8'-(X>>4),'a'+(Y&7),'8'-(Y>>4&7)); /* uncomment for Kibitz */
-   }
-#endif     
  }                                             /*    encoded in X S,8 bits */
  k^=24;                                        /* change sides back        */
  ++MP;DD=m+=m<e;                               /* delayed-loss bonus       */

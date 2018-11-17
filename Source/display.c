@@ -11,6 +11,12 @@
 Disp_data Disp_send;
 uint8_t   u8CursorX, u8CursorY;
 
+// Use main LCD buffer
+void SetMainBuffer(void) {
+    Disp_send.buffer=Disp_send.display_data+127*18;
+    Disp_send.spidata=Disp_send.display_setup;
+}
+
 void SwitchBuffers(void) {
     if(!testbit(WatchBits, disp_select)) {   // Check display buffer
         setbit(WatchBits, disp_select);
@@ -19,8 +25,8 @@ void SwitchBuffers(void) {
     }
     else {
         clrbit(WatchBits, disp_select);
-        Disp_send.buffer=Temp.TIME.buffer2+127*18;      // Locate pointer at upper left byte
-        Disp_send.spidata=Temp.TIME.display_setup2;
+        Disp_send.buffer=T.TIME.buffer2+127*18;      // Locate pointer at upper left byte
+        Disp_send.spidata=T.TIME.display_setup2;
     }
 }
 
@@ -31,7 +37,7 @@ void clr_display() {
         p=Disp_send.display_data;
     }
     else {
-        p=Temp.TIME.buffer2;
+        p=T.TIME.buffer2;
     }
     lcd_goto(0,0);
     for(uint8_t i=0; i<128; i++) {
@@ -120,22 +126,21 @@ void lcd_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) {
 
 // Horizontal line
 void lcd_hline(uint8_t x1, uint8_t x2, uint8_t y, uint8_t c) {
-    if(x1>=192) x1=0; else if(x1>=128) x1=127;
+    if(x1>=192) x1=0; else if(x1>=128) x1=127;  // Handle overflow
     if(x2>=192) x2=0; else if(x2>=128) x2=127;
 	if(x1>=x2) SWAP(x1,x2);
 	for(;x1<=x2;x1++) pixel(x1,y,c);
 }
 
 void Rectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t c) {
-    if(y1>=y2) SWAP(x1,x2);
     lcd_hline(x1,x2,y1,c);
     lcd_hline(x1,x2,y2,c);
-    lcd_line(x1,y1,x1,y2);
-    lcd_line(x2,y1,x2,y2);
+	if(y1>=y2) SWAP(y1,y2);
+	for(;y1<=y2;y1++) { pixel(x1,y1,c); pixel(x2,y1,c); }
 }
 
 void fillRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t c) {
-    if(y1>=y2) SWAP(x1,x2);    
+    if(y1>=y2) SWAP(y1,y2);    
     while(y1<=y2) {
         lcd_hline(x1,x2,y1++,c);
     }

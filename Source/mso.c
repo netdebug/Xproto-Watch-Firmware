@@ -546,9 +546,9 @@ void MSO(void) {
                     if(circular>=512) circular=circular-512;
                 }
                 p1=DC.CH1data; p2=DC.CH2data; p3=DC.CHDdata;
-                q1=(int8_t *)Temp.IN.CH1+circular;
-                q2=(int8_t *)Temp.IN.CH2+circular;
-                q3=(int8_t *)Temp.IN.CHD+circular;
+                q1=(int8_t *)T.IN.CH1+circular;
+                q2=(int8_t *)T.IN.CH2+circular;
+                q3=(int8_t *)T.IN.CHD+circular;
                 i=0;
                 do {
                     uint8_t ch1raw, ch2raw, ch1end,ch2end;
@@ -558,9 +558,9 @@ void MSO(void) {
                     circular++;
                     if(circular>=512) {  // Circular buffer
                         circular=0;
-                        q1=(int8_t *)Temp.IN.CH1;
-                        q2=(int8_t *)Temp.IN.CH2;
-                        q3=(int8_t *)Temp.IN.CHD;
+                        q1=(int8_t *)T.IN.CH1;
+                        q2=(int8_t *)T.IN.CH2;
+                        q3=(int8_t *)T.IN.CHD;
                     }
                     if(Srate) {   // Srate 0 only has 256 data points
                         if(testbit(CH1ctrl,chaverage)) {
@@ -573,9 +573,9 @@ void MSO(void) {
                     }
                     if(circular>=512) {  // Circular buffer
                         circular=0;
-                        q1=(int8_t *)Temp.IN.CH1;
-                        q2=(int8_t *)Temp.IN.CH2;
-                        q3=(int8_t *)Temp.IN.CHD;
+                        q1=(int8_t *)T.IN.CH1;
+                        q2=(int8_t *)T.IN.CH2;
+                        q3=(int8_t *)T.IN.CHD;
                     }
                     ch1end = saddwsat(ch1raw, CH1.offset);
                     if(testbit(CH1ctrl,chinvert)) ch1end = 255-ch1end;
@@ -923,7 +923,7 @@ void MSO(void) {
 			        }
                     fft_stuff(NULL);
                     for(uint8_t i=0; i<FFT_N/2; i++) {
-				        uint8_t fftdata=Temp.FFT.magn[(uint8_t)(i-M.HPos)]>>2;
+				        uint8_t fftdata=T.FFT.magn[(uint8_t)(i-M.HPos)]>>2;
 						if(fftdata>(MAX_Y-8)) fftdata=(MAX_Y-8);
                         if(testbit(Display, line)) lcd_line(i, (MAX_Y-8)-fftdata, i, (MAX_Y-8));
                         else set_pixel(i, (MAX_Y-8)-fftdata);
@@ -933,7 +933,7 @@ void MSO(void) {
                     if(testbit(CH1ctrl,chon)) {     // Display new FFT data
                         CH1.f=fft_stuff(DC.CH1data);
                         for(i=0,j=0; j<FFT_N/2; i++,j++) {
-    				        uint8_t fftdata=Temp.FFT.magn[j]>>divide;
+    				        uint8_t fftdata=T.FFT.magn[j]>>divide;
 							if(fftdata>temp1) fftdata=temp1;
                             if(testbit(Display, line)) lcd_line(i, temp1-fftdata, i, temp1);
                             else set_pixel(i, temp1-fftdata);
@@ -943,7 +943,7 @@ void MSO(void) {
                         CH2.f=fft_stuff(DC.CH2data);
                         // Display new FFT data
                         for(i=0,j=0; j<FFT_N/2; i++,j++) {
-							uint8_t fftdata=Temp.FFT.magn[j]>>divide;
+							uint8_t fftdata=T.FFT.magn[j]>>divide;
 							if(fftdata>temp1) fftdata=temp1;    
                             if(testbit(Display, line)) lcd_line(i, fft2pos-fftdata, i, fft2pos);
                             else set_pixel(i, fft2pos-fftdata);
@@ -2503,8 +2503,8 @@ uint8_t fft_stuff(uint8_t *p1) {
 		    if(i>127) p3--;                     // (only stored half of window)
             ch1=(int8_t)((*p1++)-128);          // Convert to signed char
             ch2=(int8_t)((*p2++)-128);          // Convert to signed char
-            Temp.FFT.bfly[i].r=FMULS(ch1, w);
-		    Temp.FFT.bfly[i].i=FMULS(ch2, w);
+            T.FFT.bfly[i].r=FMULS(ch1, w);
+		    T.FFT.bfly[i].i=FMULS(ch2, w);
         } while (++i);
 	}
 	else {
@@ -2516,24 +2516,24 @@ uint8_t fft_stuff(uint8_t *p1) {
 		    if(i<127) p3++;                     // Window symmetry
 		    if(i>127) p3--;                     // (only stored half of window)
             ch=(int8_t)((*p1++)-128);           // Convert to signed char
-            Temp.FFT.bfly[i].r=Temp.FFT.bfly[i].i=(signed int)(FMULS8(ch, w)*256);
+            T.FFT.bfly[i].r=T.FFT.bfly[i].i=(signed int)(FMULS8(ch, w)*256);
         } while (++i);
 	}
 	clrbit(Misc,bigfont);
-    fft_execute(Temp.FFT.bfly);
-    fft_output(Temp.FFT.bfly, Temp.FFT.magn);
+    fft_execute(T.FFT.bfly);
+    fft_output(T.FFT.bfly, T.FFT.magn);
     // Find maximum frequency
     uint8_t max=3;
     uint8_t i=1;                                // Ignore DC
-    if(Temp.FFT.magn[0]>Temp.FFT.magn[1]) i=2;  // Ignore big DC
+    if(T.FFT.magn[0]>T.FFT.magn[1]) i=2;  // Ignore big DC
     f=0;
     for(; i<FFT_N/2; i++) {
-        uint8_t current=Temp.FFT.magn[i];
+        uint8_t current=T.FFT.magn[i];
         if(current>max) {
             max=current; f=i;
         }
     }
-    if(Temp.FFT.magn[f]>7) return f;
+    if(T.FFT.magn[f]>7) return f;
     else return 0;      // Signal too small
 }
 
@@ -2633,8 +2633,8 @@ static inline void Measurements(void) {
         avrg2+=calibrate;
 		//calibrate=(int8_t)eeprom_read_byte((int8_t *)&gain8CH2);            // CH2 Gain Calibration
 		//avrg2=avrg2*(2048+calibrate)/2048;                                  // +/- 6.25% gain variation
-        Temp.IN.METER.Vdc[0]= avrg1>>5; // Exp. average: ((avrg1>>5)+Temp.IN.METER.Vdc[0])/2;
-        Temp.IN.METER.Vdc[1]= avrg2>>5; // Exp. average: ((avrg2>>5)+Temp.IN.METER.Vdc[1])/2;
+        T.IN.METER.Vdc[0]= avrg1>>5; // Exp. average: ((avrg1>>5)+Temp.IN.METER.Vdc[0])/2;
+        T.IN.METER.Vdc[1]= avrg2>>5; // Exp. average: ((avrg2>>5)+Temp.IN.METER.Vdc[1])/2;
         ADCB.CH0.CTRL = oldch1;
         ADCA.CH0.CTRL = oldch0;
         ADCA.PRESCALER = oldprescalea;
@@ -2642,9 +2642,9 @@ static inline void Measurements(void) {
         ADCB.PRESCALER = oldprescaleb;
         ADCB.CTRLB = oldctrlbb;
 cancelvdc:
-        printV(Temp.IN.METER.Vdc[0],0, CH1ctrl);
+        printV(T.IN.METER.Vdc[0],0, CH1ctrl);
         lcd_goto(64,2);
-        printV(Temp.IN.METER.Vdc[1],0, CH2ctrl);
+        printV(T.IN.METER.Vdc[1],0, CH2ctrl);
     }
     else if(testbit(MStatus,vp_p) && !testbit(MStatus,vdc)) {   // Display VPP
                         printV((int16_t)CH1.vpp*128, M.CH1gain, CH1ctrl);
@@ -2707,7 +2707,7 @@ cancelvdc:
         freqv = (freqv<<16) + TCC1.CCA;
         setbit(Misc,negative);
         printF(8,5,freqv);          // Print count
-        Temp.IN.METER.Freq = freqv;
+        T.IN.METER.Freq = freqv;
         clrbit(Misc,negative);
 cancelfreq:
         // End
@@ -3166,8 +3166,8 @@ void StartDMAs(void) {
     DMA.CH0.ADDRCTRL  = 0b00000101;         // Source fixed, incr dest, reload dest @ end block
     DMA.CH0.TRIGSRC   = 0x10;               // ADCA CH0 is trigger source
     DMA.CH0.TRFCNT    = 512;                // buffer size
-    DMA.CH0.DESTADDR0 = (((uint16_t) Temp.IN.CH1)>>0*8) & 0xFF;
-    DMA.CH0.DESTADDR1 = (((uint16_t) Temp.IN.CH1)>>1*8) & 0xFF;
+    DMA.CH0.DESTADDR0 = (((uint16_t) T.IN.CH1)>>0*8) & 0xFF;
+    DMA.CH0.DESTADDR1 = (((uint16_t) T.IN.CH1)>>1*8) & 0xFF;
 //    DMA.CH0.DESTADDR2 = 0;
     DMA.CH0.SRCADDR0  = (((uint16_t)(&ADCA.CH0.RESL))>>0*8) & 0xFF;
     DMA.CH0.SRCADDR1  = (((uint16_t)(&ADCA.CH0.RESL))>>1*8) & 0xFF;
@@ -3177,8 +3177,8 @@ void StartDMAs(void) {
     DMA.CH2.ADDRCTRL  = 0b00000101;         // Source fixed, incr dest, reload dest @ end block
     DMA.CH2.TRIGSRC   = 0x10;               // ADCA CH0 is trigger source
     DMA.CH2.TRFCNT    = 512;                // buffer size
-    DMA.CH2.DESTADDR0 = (((uint16_t) Temp.IN.CHD)>>0*8) & 0xFF;
-    DMA.CH2.DESTADDR1 = (((uint16_t) Temp.IN.CHD)>>1*8) & 0xFF;
+    DMA.CH2.DESTADDR0 = (((uint16_t) T.IN.CHD)>>0*8) & 0xFF;
+    DMA.CH2.DESTADDR1 = (((uint16_t) T.IN.CHD)>>1*8) & 0xFF;
 //    DMA.CH2.DESTADDR2 = 0;
     DMA.CH2.SRCADDR0  = (((uint16_t)(&VPORT2.IN))>>0*8) & 0xFF;
     DMA.CH2.SRCADDR1  = (((uint16_t)(&VPORT2.IN))>>1*8) & 0xFF;
@@ -3188,8 +3188,8 @@ void StartDMAs(void) {
     DMA.CH1.ADDRCTRL  = 0b00000101;         // Source fixed, incr dest, reload dest @ end block
     DMA.CH1.TRIGSRC   = 0x20;               // ADCB CH0 is trigger source
     DMA.CH1.TRFCNT    = 512;                // buffer size
-    DMA.CH1.DESTADDR0 = (((uint16_t) Temp.IN.CH2)>>0*8) & 0xFF;
-    DMA.CH1.DESTADDR1 = (((uint16_t) Temp.IN.CH2)>>1*8) & 0xFF;
+    DMA.CH1.DESTADDR0 = (((uint16_t) T.IN.CH2)>>0*8) & 0xFF;
+    DMA.CH1.DESTADDR1 = (((uint16_t) T.IN.CH2)>>1*8) & 0xFF;
 //    DMA.CH1.DESTADDR2 = 0;
     DMA.CH1.SRCADDR0  = (((uint16_t)(&ADCB.CH0.RESL))>>0*8) & 0xFF;
     DMA.CH1.SRCADDR1  = (((uint16_t)(&ADCB.CH0.RESL))>>1*8) & 0xFF;

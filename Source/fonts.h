@@ -46,8 +46,6 @@ extern const unsigned char AM[];
 extern const unsigned char BELL[];
 extern const unsigned char BATTERY[];
 extern const unsigned char SCOPE_ICON[];
-extern const unsigned char FREQ_ICON[];
-extern const unsigned char SNIFF_ICON[];
 extern const unsigned char WATCH_ICON[];
 extern const unsigned char GAMES_ICON[];
 extern const unsigned char SETTINGS_ICON[];

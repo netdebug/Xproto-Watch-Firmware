@@ -104,7 +104,7 @@ ISR(USARTE0_RXC_vect) {
             CheckPost();
 		    return;
         case 'm':   // Send METER measurement
-            p = (uint8_t *)(&Temp.IN.METER.Freq);
+            p = (uint8_t *)(&T.IN.METER.Freq);
             for(;i<4;i++) send(*p++); // Send 4 bytes
             return;            
         case 'p': clrbit(Misc,autosend); return;    // Do not automatically send data to UART
@@ -135,7 +135,7 @@ void WriteByte(uint8_t index, uint8_t value) {
     if(index<=5 || index==35 || index==38 || index==12 || index==13 ||
       (index>=24 && index<=28))  setbit(MStatus, update);      // Changing trigger
     if(index<=13) {
-		Temp.IN.METER.Freq = 0;			// Prevent sending outdated data
+		T.IN.METER.Freq = 0;			// Prevent sending outdated data
 		setbit(MStatus, updatemso);		// Settings are changing
 	}
     if(index>=36) setbit(MStatus, updateawg);

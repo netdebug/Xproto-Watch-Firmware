@@ -57,6 +57,7 @@ extern const int8_t tdual[];
 #define lcd_goto(x,y) { u8CursorX=(x); u8CursorY=(y); }
 
 /* EXTERN Function Prototype(s) */
+void SetMainBuffer(void);        // Use main LCD buffer
 void GLCD_LcdInit(void);
 void LCD_PrepareBuffers(void);
 void GLCD_LcdOff(void);

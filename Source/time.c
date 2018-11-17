@@ -129,7 +129,7 @@ ISR(TCF0_CCA_vect) {
         NowHour++;              // One hour
         if(NowHour>=24) {
             NowHour=0;
-            Temp.TIME.battery = MeasureBattery(0);
+            T.TIME.battery = MeasureBattery(0);
         }            
         if(testbit(WSettings,hourbeep)) {   // On the hour beep
             Sound(NOTE_B7,NOTE_B7);
@@ -186,7 +186,8 @@ void SetMinuteInterrupt(void) {
 
 void Watch(void) {
     uint8_t newface=0, Faces=0;
-    uint8_t Change_timeout=0, exit=0;
+    uint8_t Change_timeout=0;
+    clrbit(WatchBits, goback);
     clr_display();
     SwitchBuffers();
     clr_display();
@@ -196,7 +197,7 @@ void Watch(void) {
     Menu = 0;   // Selected item to change
     AlarmHour = eeprom_read_byte(&EE_Alarm_Hour);
     AlarmMinute = eeprom_read_byte(&EE_Alarm_Minute);
-    Temp.TIME.battery = MeasureBattery(0);
+    T.TIME.battery = MeasureBattery(0);
     do {                    // Cycle time is 0.5 seconds
                                                         // When to refresh screen? ->
         if( Menu ||                 // When user is changing the time
@@ -241,7 +242,7 @@ void Watch(void) {
             if(Menu==0) {                         // Currently not changing time
                 GetTimeTimer();
                 if(testbit(Buttons,KML)) {
-                    exit=1;
+                    setbit(WatchBits, goback);
                 }
                 if(testbit(Buttons,K1)) {   // Select Face 1
                     if(Faces==0) togglebit(WSettings, disp_secs);
@@ -342,7 +343,7 @@ void Watch(void) {
                     case 1:
                     // Pre calculate background image, save in buffer 3
                     CPU_Fast();
-                    Disp_send.buffer=Temp.TIME.buffer3+127*18;
+                    Disp_send.buffer=T.TIME.buffer3+127*18;
                     clr_display();
                     for(uint8_t i=0; i<60; i++) {   // Circumference markers
                         lcd_line(63+Sine60(i,60),63-Cosine60(i,60),
@@ -357,11 +358,12 @@ void Watch(void) {
                     CPU_Slow();
                     break;
                     case 2: 
-                        Temp.TIME.x = 0;
-                        Temp.TIME.y = 0;
+                        T.TIME.x = 0;
+                        T.TIME.y = 0;
                     break;
                 }
-            }            
+            }
+            setbit(Misc, redraw);         
         }
         if(Buttons) {   // Buttons are still pressed -> prepress -> longpress
             if(testbit(WatchBits,prepress)) {
@@ -377,7 +379,7 @@ void Watch(void) {
         SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
         asm("sleep");
         asm("nop");
-    } while(!exit);
+    } while(!testbit(WatchBits,goback));
     TCF0.INTCTRLB = 0x00;   // Disable 1 minute interrupt
 }
 
@@ -420,7 +422,7 @@ void face0(void) {
     // Date
     bitmap(118,0,BELL);
     bitmap(2,0,BATTERY);
-    fillRectangle(4,2,4+Temp.TIME.battery,5,255);
+    fillRectangle(4,2,4+T.TIME.battery,5,255);
     lcd_goto(74,0);
     uint8_t hour = AlarmHour;
     if(testbit(WatchBits,blink) || Menu!=ALARM_HOUR) {  // Flash when changing
@@ -474,7 +476,7 @@ void face1(void) {
     if(h>=12) h-=12;
     h=h*5+m/12; // Add minutes/12 to hour needle
     // Background image
-    memcpy(Disp_send.buffer-127*18,Temp.TIME.buffer3,DISPLAY_DATA_SIZE);
+    memcpy(Disp_send.buffer-127*18,T.TIME.buffer3,DISPLAY_DATA_SIZE);
     // Date
     lcd_goto(50,10); lcd_putsp(months_short[NowMonth-1]); GLCD_Putchar(' '); printN(NowDay);
     // Hours
@@ -526,13 +528,13 @@ void face2(void) {
         #define G2 277
         #define increment (G2 - G1)
         do {    /* determine next pixel */
-            Temp.TIME.x = ( Temp.TIME.x + increment ) % G1;
-            Temp.TIME.y = ( Temp.TIME.y + increment ) % G2;
-        } while ((Temp.TIME.x >=128) || (Temp.TIME.y >= 128));
+            T.TIME.x = ( T.TIME.x + increment ) % G1;
+            T.TIME.y = ( T.TIME.y + increment ) % G2;
+        } while ((T.TIME.x >=128) || (T.TIME.y >= 128));
         
         int8_t px,py;
-        px = (int8_t)(Temp.TIME.x)-64;  
-        py = (int8_t)(Temp.TIME.y)-64;
+        px = (int8_t)(T.TIME.x)-64;  
+        py = (int8_t)(T.TIME.y)-64;
         // Julia Fractal
         fixed x2,y2,x0,y0,x,y;
         uint8_t max=0;
@@ -554,10 +556,10 @@ void face2(void) {
 
 void CountDown(void) {
     uint8_t hour=0,minute=0,second=0;
-    uint8_t n,d,h,exit=0, lapl=2, lap=0;
+    uint8_t n, d, h, lapl=2, lap=0;
     uint8_t start=0, clock=0, clear=1;
-
-    while(!exit) {
+    clrbit(WatchBits, goback);
+    do {
         if(start) {
             if(SECPULSE() && clock==0) clock=1;
             else if(!SECPULSE() && clock==1) {
@@ -620,29 +622,31 @@ void CountDown(void) {
                     clear = 1;
                 }
             }
-            if(testbit(Buttons,KML))  exit = 1;
+            if(testbit(Buttons,KML)) setbit(WatchBits, goback);
         }
         WaitDisplay();
         SoundOff();
         SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
         asm("sleep");
         asm("nop");
-    }
+    } while(!testbit(WatchBits,goback));
+    clrbit(WatchBits, goback);
     clr_display();
     setbit(Misc, redraw);
 }
 
 void Stopwatch(void) {
     uint8_t hour=0,minute=0,second=0,hundredth=0;
-    uint8_t n,d,h,exit=0;
+    uint8_t n,d,h;
     uint8_t lapl=2, lap=0, clear=1;
-    PR.PRPC  &= 0b11111100;         // Enable TCC0 TCC1C clocks
+    PR.PRPC  &= 0b11111100;         // Enable TCC0 TCC1 clocks
     EVSYS.CH0MUX = 0b11000000;      // Event CH0 = TCC0 overflow
     TCC0.CNT = 0;
     TCC0.PER = 19999;               // 100Hz
     TCC1.CNT = 0;
     TCC1.PER = 5999;                // 1 minute
-    while(!exit) {
+    clrbit(WatchBits, goback);
+    do {
         if(clear) { clr_display(); clear=0; }
         lcd_goto(39,1); putchar5x8(':');
         lcd_goto(69,1); putchar5x8(':');
@@ -696,7 +700,7 @@ void Stopwatch(void) {
                     clear = 1;
                 }         
             }
-            if(testbit(Buttons,KML))  exit = 1;
+            if(testbit(Buttons,KML)) setbit(WatchBits, goback);
         }
         WaitDisplay(); 
         if(TCC1.CTRLA==0) {         // Not running
@@ -717,7 +721,8 @@ void Stopwatch(void) {
             while(temp>=100) { second++; temp-=100; }
             hundredth=lobyte(temp);
         }
-    }
+    } while(!testbit(WatchBits,goback));
+    clrbit(WatchBits, goback);
     TCC0.CTRLA = 0;
     TCC1.CTRLA = 0;
     PR.PRPC  |= 0b00000011;         // Disable TCC0 TCC1C clocks
@@ -734,7 +739,7 @@ void Calendar(void) {
     showdate.mon  = NowMonth;
     showdate.year = NowYear;
     showdate.wday = NowWeekDay;
-    uint8_t exit=0;
+    clrbit(WatchBits, goback);
     setbit(Misc, redraw);
     do {
         if(testbit(Misc, redraw)) {
@@ -793,14 +798,12 @@ void Calendar(void) {
                     showdate.year++;
                 }
             }
-            if(testbit(Buttons,KML)) {
-                exit = 1;
-            }
+            if(testbit(Buttons,KML)) setbit(WatchBits, goback);
         }
         SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
         asm("sleep");
         asm("nop");
-    } while(!exit);
+    } while(!testbit(WatchBits, goback));
 }
 
 // Returns the column number for the calendar display, 2000-01-01 was Saturday

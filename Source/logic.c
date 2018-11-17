@@ -119,8 +119,8 @@ void LogicDMA(void) {
     if(SPIC.STATUS) dummy=SPIC.DATA;
     DMA.CH0.ADDRCTRL  = 0b10000101;     // reload source addr after each burst, incr dest, reload dest end block
     DMA.CH0.TRFCNT    = BUFFER_SERIAL;            // buffer size
-    DMA.CH0.DESTADDR0 = (((uint16_t) Temp.LOGIC.data.Serial.RX)>>0*8) & 0xFF;
-    DMA.CH0.DESTADDR1 = (((uint16_t) Temp.LOGIC.data.Serial.RX)>>1*8) & 0xFF;
+    DMA.CH0.DESTADDR0 = (((uint16_t) T.LOGIC.data.Serial.RX)>>0*8) & 0xFF;
+    DMA.CH0.DESTADDR1 = (((uint16_t) T.LOGIC.data.Serial.RX)>>1*8) & 0xFF;
     if(M.CHDdecode==rs232) {
         DMA.CH0.TRIGSRC   = 0x4B;               // USARTC0 is trigger source
         DMA.CH0.SRCADDR0  = (((uint16_t)(&USARTC0.DATA))>>0*8) & 0xFF;
@@ -137,11 +137,11 @@ void LogicDMA(void) {
     // For UART and SPI Sniffer, bit-bang / DMA:
     DMA.CH1.ADDRCTRL  = 0b10000101;     // reload source addr after each burst, incr dest, reload dest end block
     DMA.CH1.TRFCNT    = BUFFER_SERIAL;            // buffer size
-    DMA.CH1.DESTADDR0 = (((uint16_t) Temp.LOGIC.data.Serial.TX)>>0*8) & 0xFF;
-    DMA.CH1.DESTADDR1 = (((uint16_t) Temp.LOGIC.data.Serial.TX)>>1*8) & 0xFF;
+    DMA.CH1.DESTADDR0 = (((uint16_t) T.LOGIC.data.Serial.TX)>>0*8) & 0xFF;
+    DMA.CH1.DESTADDR1 = (((uint16_t) T.LOGIC.data.Serial.TX)>>1*8) & 0xFF;
     //DMA.CH1.TRIGSRC   = 0x00;               // Manual
-    DMA.CH1.SRCADDR0  = (((uint16_t)(&Temp.LOGIC.addr_ack_pos))>>0*8) & 0xFF;
-    DMA.CH1.SRCADDR1  = (((uint16_t)(&Temp.LOGIC.addr_ack_pos))>>1*8) & 0xFF;        
+    DMA.CH1.SRCADDR0  = (((uint16_t)(&T.LOGIC.addr_ack_pos))>>0*8) & 0xFF;
+    DMA.CH1.SRCADDR1  = (((uint16_t)(&T.LOGIC.addr_ack_pos))>>1*8) & 0xFF;        
 
     if(testbit(Mcursors, singlesniff)) DMA.CH1.CTRLA     = 0b10000100;    // no repeat, 1 byte burst
     else DMA.CH1.CTRLA     = 0b10100100;                            // repeat, 1 byte burst
@@ -154,19 +154,19 @@ void Sniff(void) {
     uint8_t page=0; // 16 pages to display 1024 bytes of data
                     // one page has 8 lines, each line will display
                     // 8 bytes in this format: "FF+ "
-    uint8_t *p=Temp.LOGIC.data.All.decoded;
+    uint8_t *p=T.LOGIC.data.All.decoded;
     clr_display_1();
     for(i=0; i<BUFFER_SERIAL*2+2; i++) *p++=0;   // Erase buffers and index
-    Temp.LOGIC.indrx=0; Temp.LOGIC.indtx=0;
+    T.LOGIC.indrx=0; T.LOGIC.indtx=0;
     if(testbit(Trigger, round)) page=0x0F;  // Go to last page
     // Setup
     PR.PRPC  = 0x00;        // Enable PORTC peripherals
     uint8_t spictrl=0;
     if(M.CHDdecode==i2c) {
         lcd_putsp(PSTR("I2C SNIFFER\nBIT0:SDA BIT1:SCL"));
-        Temp.LOGIC.addr_ack_ptr =  Temp.LOGIC.data.I2C.addr_ack;
-        Temp.LOGIC.data_ptr = Temp.LOGIC.data.I2C.decoded;
-        Temp.LOGIC.addr_ack_pos = 0x80;      // counter for keeping track of all bits
+        T.LOGIC.addr_ack_ptr =  T.LOGIC.data.I2C.addr_ack;
+        T.LOGIC.data_ptr = T.LOGIC.data.I2C.decoded;
+        T.LOGIC.addr_ack_pos = 0x80;      // counter for keeping track of all bits
         PORTC.PIN0CTRL = (PORTC.PIN0CTRL & 0b11111000) | 0b00000010;    // Sense falling edge of SDA
         PORTC.INTFLAGS = 0x03;  // Clear flags
         PORTC.INTCTRL   = 0x03; // Enable PortC INT 0, High Priority
@@ -179,7 +179,7 @@ void Sniff(void) {
         USARTC0.BAUDCTRLA = pgm_read_byte_near(BAUDA+baud);
         USARTC0.BAUDCTRLB = pgm_read_byte_near(BAUDB+baud);
         databits=(Sniffer&0x18)>>3;
-        Temp.LOGIC.databits=databits+5;
+        T.LOGIC.databits=databits+5;
         if(testbit(Sniffer,parmode)) {     // Check parity
             if(testbit(Sniffer,parity)) databits |= 0x30;
             else databits |= 0x20;
@@ -189,8 +189,8 @@ void Sniff(void) {
                 
         USARTC0.CTRLB = 0x10;       // Enable RX
         TCC1.CTRLA = 0x01;  // DIV1
-        Temp.LOGIC.baud = (uint16_t)pgm_read_word_near(TCC1val+baud);
-        TCC1.PER = Temp.LOGIC.baud/4;   // Sample at 4 times the baud rate
+        T.LOGIC.baud = (uint16_t)pgm_read_word_near(TCC1val+baud);
+        TCC1.PER = T.LOGIC.baud/4;   // Sample at 4 times the baud rate
         TCC1.INTCTRLA = 0x03;           // Enable TCC1 interrupt, High Priority
     }
     else if(M.CHDdecode==spi) {
@@ -209,11 +209,11 @@ void Sniff(void) {
     }
     LogicDMA();
     dma_display(); WaitDisplay();
-    while((Temp.LOGIC.indrx==0) && (Temp.LOGIC.indtx==0)) {
+    while((T.LOGIC.indrx==0) && (T.LOGIC.indtx==0)) {
         WDR();
         if(M.CHDdecode!=i2c) {
-            Temp.LOGIC.indrx=BUFFER_SERIAL-DMA.CH0.TRFCNT;
-            Temp.LOGIC.indtx=BUFFER_SERIAL-DMA.CH1.TRFCNT;            
+            T.LOGIC.indrx=BUFFER_SERIAL-DMA.CH0.TRFCNT;
+            T.LOGIC.indtx=BUFFER_SERIAL-DMA.CH1.TRFCNT;            
         }            
         if(M.CHDdecode==spi) {
             if(testbit(VPORT2.IN, 4)) {     // SS not asserted
@@ -222,7 +222,7 @@ void Sniff(void) {
                 PORTC.INTCTRL   = 0x0C; // Enable PortC INT 1, High Priority
             }                
         }
-        if(!testbit(MStatus,gosniffer)) goto exit;
+        if(!testbit(MStatus,gosniffer)) goto exitSniffer;
         if (testbit(Buttons,KML)) clrbit(MStatus,gosniffer);
     }
 ////////////////////////////////////////////////////////////////////////////////////
@@ -235,11 +235,11 @@ void Sniff(void) {
 		if((endpoints[1].in.STATUS & USB_EP_TRNCOMPL0_bm)) {
     		endpoints[1].in.AUXDATA = 0;				// New transfer must clear AUXDATA
             if(!testbit(Misc,sacquired)) {
-               	endpoints[1].in.DATAPTR = (uint16_t)Temp.LOGIC.data.All.decoded;
+               	endpoints[1].in.DATAPTR = (uint16_t)T.LOGIC.data.All.decoded;
         		endpoints[1].in.CNT = 640;	    // Send first half
             }
             else {
-               	endpoints[1].in.DATAPTR = (uint16_t)Temp.LOGIC.data.All.decoded+640;
+               	endpoints[1].in.DATAPTR = (uint16_t)T.LOGIC.data.All.decoded+640;
         		endpoints[1].in.CNT = 649;	    // Send second half
             }
     		endpoints[1].in.STATUS &= ~(USB_EP_TRNCOMPL0_bm | USB_EP_BUSNACK0_bm | USB_EP_OVF_bm);
@@ -248,11 +248,11 @@ void Sniff(void) {
         // Display I2C data
         if(M.CHDdecode==i2c) {
             if(testbit(Trigger, round)) {
-                if(Temp.LOGIC.indrx>=DATA_IN_PAGE_I2C) {
-                    i=Temp.LOGIC.indrx-DATA_IN_PAGE_I2C;
+                if(T.LOGIC.indrx>=DATA_IN_PAGE_I2C) {
+                    i=T.LOGIC.indrx-DATA_IN_PAGE_I2C;
                 }
                 else {
-                    i=(BUFFER_I2C-DATA_IN_PAGE_I2C)+Temp.LOGIC.indrx;
+                    i=(BUFFER_I2C-DATA_IN_PAGE_I2C)+T.LOGIC.indrx;
                 }
                 i+=(uint16_t)(page+1)*DATA_IN_PAGE_I2C;
                 if(i>=BUFFER_I2C) i-=BUFFER_I2C;
@@ -262,12 +262,12 @@ void Sniff(void) {
             }
             for(n=0; n<DATA_IN_PAGE_I2C; n++) {
                 if(!testbit(Trigger, round)) {
-                    if(i>=Temp.LOGIC.indrx) break;
+                    if(i>=T.LOGIC.indrx) break;
                 }
                 uint8_t shift;
                 shift = (i&0x0003)*2;
-                data=Temp.LOGIC.data.I2C.decoded[i];
-                addrdata=Temp.LOGIC.data.I2C.addr_ack[i/4];
+                data=T.LOGIC.data.I2C.decoded[i];
+                addrdata=T.LOGIC.data.I2C.addr_ack[i/4];
                 ack=      (addrdata<<(shift+1))&0x80;
                 addrdata= (addrdata<<shift)&0x80;
                 if(addrdata) {  // Address
@@ -293,8 +293,8 @@ void Sniff(void) {
         }
         // Display UART or SPI data
         else {
-            Temp.LOGIC.indrx=BUFFER_SERIAL-DMA.CH0.TRFCNT;
-            Temp.LOGIC.indtx=BUFFER_SERIAL-DMA.CH1.TRFCNT;
+            T.LOGIC.indrx=BUFFER_SERIAL-DMA.CH0.TRFCNT;
+            T.LOGIC.indtx=BUFFER_SERIAL-DMA.CH1.TRFCNT;
             if(testbit(Mcursors, singlesniff)) {
                 if(!testbit(DMA.CH0.CTRLA, 7)) {    // Hardware decoding complete
                     DMA.CH0.TRFCNT    = 0;
@@ -356,7 +356,7 @@ void Sniff(void) {
             if (testbit(Buttons,KML)) clrbit(MStatus,gosniffer);  // Exit sniffer
         }
     } while (testbit(MStatus,gosniffer));
-exit:
+exitSniffer:
     Buttons=0;
    	endpoints[1].in.DATAPTR = (uint16_t)DC.CH1data;
 	endpoints[1].in.STATUS = USB_EP_BUSNACK0_bm | USB_EP_TRNCOMPL0_bm;
@@ -377,12 +377,12 @@ void DisplayData(uint8_t side, uint8_t page) {
     uint8_t *p;
     if(side==0) {   // Left side (RX)
         Xoff=0;
-        index = Temp.LOGIC.indrx;
-        p = Temp.LOGIC.data.Serial.RX;
+        index = T.LOGIC.indrx;
+        p = T.LOGIC.data.Serial.RX;
     } else {        // Right side (TX)
         Xoff=71;
-        index = Temp.LOGIC.indtx;
-        p = Temp.LOGIC.data.Serial.TX;
+        index = T.LOGIC.indtx;
+        p = T.LOGIC.data.Serial.TX;
     }
     u8CursorX=Xoff;
     u8CursorY=0;
@@ -438,10 +438,10 @@ ISR(PORTC_INT0_vect) {
     uint8_t data;       // byte to accumulate data information
     uint8_t bits;       // current bit being processed
     uint8_t first=1;    // First data after start
-    uint8_t *dataptr=Temp.LOGIC.data_ptr;           // temp data pointer
-    uint8_t *bitsptr=Temp.LOGIC.addr_ack_ptr;       // temp bits pointer
-    uint8_t current_pos=Temp.LOGIC.addr_ack_pos;    // Current bit position in byte
-    const uint8_t *queue_max=Temp.LOGIC.data.I2C.decoded+1024;
+    uint8_t *dataptr=T.LOGIC.data_ptr;           // temp data pointer
+    uint8_t *bitsptr=T.LOGIC.addr_ack_ptr;       // temp bits pointer
+    uint8_t current_pos=T.LOGIC.addr_ack_pos;    // Current bit position in byte
+    const uint8_t *queue_max=T.LOGIC.data.I2C.decoded+1024;
     TCC0.CNTL = 24;     // 1.024 second timeout
     setbit(TCC0.INTFLAGS, TC2_LUNFIF_bp);    // Clear trigger timeout interrupt
 
@@ -514,20 +514,20 @@ queue_is_full:
     if(testbit(Mcursors, singlesniff)) {
         PORTC.INTCTRL = 0x00;   // Disable PORTC interrupts
         setbit(MStatus, stop);
-        Temp.LOGIC.indrx=BUFFER_I2C;
+        T.LOGIC.indrx=BUFFER_I2C;
         goto exiti2cb;
     }
-    bitsptr=Temp.LOGIC.data.I2C.addr_ack;
+    bitsptr=T.LOGIC.data.I2C.addr_ack;
     *bitsptr=0;
-    dataptr=Temp.LOGIC.data.I2C.decoded;   // pointer to data
+    dataptr=T.LOGIC.data.I2C.decoded;   // pointer to data
     goto sample_bit;
     
 exiti2c:
-    Temp.LOGIC.indrx=dataptr-Temp.LOGIC.data.I2C.decoded;
+    T.LOGIC.indrx=dataptr-T.LOGIC.data.I2C.decoded;
 exiti2cb:    
-    Temp.LOGIC.data_ptr=dataptr;
-    Temp.LOGIC.addr_ack_ptr=bitsptr;
-    Temp.LOGIC.addr_ack_pos=current_pos;
+    T.LOGIC.data_ptr=dataptr;
+    T.LOGIC.addr_ack_ptr=bitsptr;
+    T.LOGIC.addr_ack_pos=current_pos;
     PORTC.INTFLAGS = 0x01;  // Clear rising edge interrupt
 }
 
@@ -559,7 +559,7 @@ ISR(PORTC_INT1_vect) {
             while(testbit(VPORT2.IN, 7)) if(testbit(TCC0.INTFLAGS, TC2_LUNFIF_bp)) return;
         } while(--i);
     }
-    Temp.LOGIC.addr_ack_pos=data;      // data holder for DMA
+    T.LOGIC.addr_ack_pos=data;      // data holder for DMA
     PORTC.INTFLAGS = 0x02;      // Clear rising edge interrupt
     // Save data on buffer
     if(!testbit(MStatus, stop)) setbit(DMA.CH1.CTRLA,4);    // Transfer request
@@ -578,10 +578,10 @@ ISR(TCC1_OVF_vect) {
     TCC1.INTFLAGS = 0x01;   // Clear overflow flag
     while(!testbit(TCC1.INTFLAGS,0));   // wait for next time slice
     // Set actual baud rate
-    TCC1.PER = Temp.LOGIC.baud;
+    TCC1.PER = T.LOGIC.baud;
 
     // Data bits
-    for(i=0; i<Temp.LOGIC.databits; i++) {
+    for(i=0; i<T.LOGIC.databits; i++) {
         TCC1.INTFLAGS = 0x01;   // Clear overflow flag
         while(!testbit(TCC1.INTFLAGS,0));   // wait for next time bit
         data=data>>1;
@@ -590,7 +590,7 @@ ISR(TCC1_OVF_vect) {
             paritybit++;
         }
     }
-    for(i=Temp.LOGIC.databits; i<8; i++) data=data>>1;
+    for(i=T.LOGIC.databits; i<8; i++) data=data>>1;
     // Check Parity
     if(testbit(Sniffer,parmode)) {
         TCC1.INTFLAGS = 0x01;   // Clear overflow flag
@@ -621,11 +621,11 @@ ISR(TCC1_OVF_vect) {
             goto exituart;  // stop bit error
     }
 
-    Temp.LOGIC.addr_ack_pos=data;   // data holder for DMA
+    T.LOGIC.addr_ack_pos=data;   // data holder for DMA
     // Save data on buffer
     if(!testbit(MStatus, stop)) setbit(DMA.CH1.CTRLA,4);    // Transfer request
 
 exituart:
-    TCC1.PER = Temp.LOGIC.baud/4;
+    TCC1.PER = T.LOGIC.baud/4;
     TCC1.INTFLAGS = 0x01;   // Clear overflow flag
 }

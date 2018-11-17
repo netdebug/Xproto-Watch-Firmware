@@ -178,18 +178,19 @@ email me at: gabriel@gabotronics.com
 #define userinput   6       // Valid input received
 #define autosend    7       // Continuously send data to UART
 
-// WSettings         (GPIOD) -  Watch Options
+// WSettings         (GPIO9) -  Watch Options
 // 24Hr format, Date Format, Hour Beep, Alarm On, 
 #define hourbeep    0       // On the hour beep
 #define alarm_on    1       // Alarm on
 #define time24      2       // 24 Hour format
 #define date_YMD    3       // Date format YYYY/MM/DD
 #define date_DMY    4       // Date format DD/MM/YYYY
-#define military    5       // 12 or 24 hour
+
 #define disp_secs   6       // Display seconds
+#define sound_off   7       // Sound off
 
-// WatchBits        (GPIOE) -  Watch Options
-
+// WatchBits        (GPIOA) -  Watch Options
+#define goback      0       // Stay in function until exit
 #define disp_select 1       // Select active display buffer
 
 #define hour_pm     3       // Time am / pm
@@ -272,7 +273,9 @@ typedef union {
         uint16_t x,y;               // Fractal pixel
 	} TIME;
     struct {
-    #define U 128             /* D() Stack array size (think depth), 4minimum */
+        uint8_t level;            // Level (Sets thinking time)
+        uint8_t Player1, Player2;
+        #define U 128             /* D() Stack array size (think depth), 4minimum */
         struct {
             short q,l,e;          /* Args: (q,l)=window, e=current eval. score         */
             short m,v,            /* m=value of best move so far, v=current evaluation */
@@ -289,13 +292,22 @@ typedef union {
             H,t,                 /* H=capture square, t=piece on capture square       */
             X,Y,                 /* X=origin, Y=target square of best move so far     */
             a;                   /* D() return address state                          */
-            } _, SA[U],*MP;      /* _=working set, SA=stack array, SP=stack pointer   */
+        } _, SA[U],*MP;          /* _=working set, SA=stack array, SP=stack pointer   */
     } CHESS;
     struct {
+		uint8_t display_setup2[2];
+		uint8_t buffer2[DISPLAY_DATA_SIZE];
         uint8_t board[32][32];
         SnakeStruct Player1, Player2;
         uint8_t Fruitx,Fruity;
-    } SNAKE;        
+    } SNAKE;
+    struct {
+        uint8_t display_setup2[2];
+        uint8_t buffer2[DISPLAY_DATA_SIZE];
+        fixed   ballx, bally;
+        fixed   speedx, speedy;
+        PaddleStruct Player1, Player2;
+    } PONG;
 } TempData;
 
 // Variables that need to be stored in NVM
@@ -334,7 +346,7 @@ typedef struct {
     uint32_t    AWGdesiredF;    // 40 41 42 43 Desired frequency
 } NVMVAR;
 
-extern TempData Temp;
+extern TempData T;
 extern NVMVAR M;
 
 // Music notes frequency values for 8bit clock at 250kHz

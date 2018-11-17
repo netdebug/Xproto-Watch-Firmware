@@ -28,6 +28,11 @@ union {
     uint16_t Seed16;
 } Seed;    
 
+// Use time to randomiza
+void Randomize(void) {
+    Seed.Seed16 = TCF0.CNT;
+}
+
 // Pseudo Random Number - Linear congruential generator
 uint8_t prandom(void) {
     Seed.Seed32 = 25173 * Seed.Seed32 + 13849;

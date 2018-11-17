@@ -53,22 +53,22 @@ void GLCD_LcdInit(void)	{
 void LCD_PrepareBuffers(void) {
     Disp_send.display_setup[0] = DYNAMIC_MODE;  // Command
     Disp_send.display_setup[1] = 128;           // Address of line 1 ('1' bit reversed)
-    Temp.TIME.display_setup2[0] = DYNAMIC_MODE;  // Command
-    Temp.TIME.display_setup2[1] = 128;           // Address of line 1 ('1' bit reversed)
+    T.TIME.display_setup2[0] = DYNAMIC_MODE;  // Command
+    T.TIME.display_setup2[1] = 128;           // Address of line 1 ('1' bit reversed)
     for(uint8_t i=0; i<128; i++) {
 	    uint8_t r=i+2;                          // Address of line 2
 	    REVERSE(r);                             // The address needs to be bit reversed
 	    // Each line needs 18 bytes of data, prepare the first two bytes:
 	    Disp_send.display_data[16+i*18] = 0;    // Trailer
 	    Disp_send.display_data[17+i*18] = r;    // Address (or Trailer of last line)
-	    Temp.TIME.buffer2[16+i*18] = 0;    // Trailer
-	    Temp.TIME.buffer2[17+i*18] = r;    // Address (or Trailer of last line)
-	    Temp.TIME.buffer3[16+i*18] = 0;    // Trailer
-	    Temp.TIME.buffer3[17+i*18] = r;    // Address (or Trailer of last line)
+	    T.TIME.buffer2[16+i*18] = 0;    // Trailer
+	    T.TIME.buffer2[17+i*18] = r;    // Address (or Trailer of last line)
+	    T.TIME.buffer3[16+i*18] = 0;    // Trailer
+	    T.TIME.buffer3[17+i*18] = r;    // Address (or Trailer of last line)
     }
     Disp_send.display_data[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
-    Temp.TIME.buffer2[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
-    Temp.TIME.buffer3[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
+    T.TIME.buffer2[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
+    T.TIME.buffer3[DISPLAY_DATA_SIZE-1] = STATIC_MODE;
 }
 
 void GLCD_LcdOff(void)	{
