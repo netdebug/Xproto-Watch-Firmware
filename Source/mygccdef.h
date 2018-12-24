@@ -1,11 +1,11 @@
-/***********************************************************************
+/****************************************************************************
 
-My GCC definitions
+Oscilloscope Watch
 
 Gabotronics
-February 2012
+December 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
 This program is distributed under the terms of the GNU General Public License 
 
@@ -88,6 +88,10 @@ email me at: gabriel@gabotronics.com
         }) */
 
 static __inline__ void NOP (void) { __asm__ volatile ( "nop    " "\n\t" ); }
+static __inline__ void WDR (void) { __asm__ volatile ( "wdr    " "\n\t" ); }
+static __inline__ void CLT (void) { __asm__ volatile ( "clt    " "\n\t" ); }
+static __inline__ void SET (void) { __asm__ volatile ( "set    " "\n\t" ); }
+static __inline__ void SLP (void) { __asm__ volatile ( "sleep  " "\n\t" ); }
 
 // ### ROL ### Logical Rotate Left Of Register Through Carry 
 #define ASM_ROL(reg) asm volatile ("rol %0" : "=r" (reg) : "0" (reg)) 
@@ -99,23 +103,23 @@ static __inline__ void NOP (void) { __asm__ volatile ( "nop    " "\n\t" ); }
 #define SWAP(x,y) do { (x)=(x)^(y); (y)=(x)^(y); (x)=(x)^(y); } while(0)
 
 // 8:8 Fixed Point Math
-typedef signed int fixed;
-#define int2fix(a)   (((int)(a))<<8)            // Convert char to fix
-#define fix2int(a)   ((signed char)((a)>>8))    // Convert fix to char
-#define float2fix(a) ((int)((a)*256.0))         // Convert float to fix
-#define fix2float(a) ((float)(a)/256.0)         // Convert fix to float
-#define multfix(a,b) ((int)((((long)(a))*((long)(b)))>>8)) // Multiply two fixed
-#define divfix(a,b)  ((int)((((long)(a))<<8)/((long)(b)))) // Divide two fixed
+typedef int16_t fixed;
+#define int2fix(a)   (((int16_t)(a))<<8)            // Convert char to fix
+#define fix2int(a)   ((int8_t)((a)>>8))             // Convert fix to char
+#define float2fix(a) ((int16_t)((a)*256.0))         // Convert float to fix
+#define fix2float(a) ((float)(a)/256.0)             // Convert fix to float
+#define multfix(a,b) ((int16_t)((((int32_t)(a))*((int32_t)(b)))>>8)) // Multiply two fixed
+#define divfix(a,b)  ((int16_t)((((int32_t)(a))<<8)/((int32_t)(b)))) // Divide two fixed
 
 /*// 16:16 Fixed Point Math
 //Type conversions
-typedef signed long fixed;
-#define int2fix(a)   (((long)(a))<<16)            //Convert char to fix. a is a char
-#define fix2int(a)   ((int)((a)>>16))    //Convert fix to char. a is an int(in fixed notation)
-#define float2fix(a) ((long)((a)*65536.0))         //Convert float to fix. a is a float
+typedef int32_t fixed;
+#define int2fix(a)   (((int32_t)(a))<<16)            //Convert char to fix. a is a char
+#define fix2int(a)   ((int16_t)((a)>>16))    //Convert fix to char. a is an int(in fixed notation)
+#define float2fix(a) ((int32_t)((a)*65536.0))         //Convert float to fix. a is a float
 #define fix2float(a) ((float)(a)/65536.0)         //Convert fix to float. a is an int(in fixed notation) 
-#define multfix(a,b) ( (long) ( ( ((long)(a)) * ((long)(b)) )>>16)) //multiply two fixed #
-#define divfix(a,b)  ((long)((((long)(a))<<16)/((long)(b)))) //divide two fixed #
+#define multfix(a,b) ((int32_t)((((int64_t)(a)) * ((int64_t)(b)) )>>16)) //multiply two fixed #
+#define divfix(a,b)  ((int32_t)((((int64_t)(a))<<16)/((int64_t)(b)))) //divide two fixed #
 */
 
 #endif

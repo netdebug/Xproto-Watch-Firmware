@@ -1,13 +1,13 @@
 /****************************************************************************
 
-XMEGA Oscilloscope and Development Kit
+Oscilloscope Watch
 
 Gabotronics
-February 2012
+December 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
-This program is distributed under the terms of the GNU General Public License
+This program is distributed under the terms of the GNU General Public License 
 
 www.gabotronics.com
 email me at: gabriel@gabotronics.com
@@ -25,11 +25,13 @@ email me at: gabriel@gabotronics.com
 #include "asmutil.h"
 #include "data.h"
 #include "display.h"
+#include "bitmaps.h"
 #include "hardware.h"
+#include "games.h"
 
 #define WaitDisplay() while(testbit(LCD_CTRL,LCD_CS))
 
-// Global variables, using GPIO for optimized access
+// Scope - Global variables, using GPIO for optimized access
 #define Srate       GPIO0   // Sampling rate
 #define CH1ctrl     GPIO1   // CH1 controls
 #define CH2ctrl     GPIO2   // CH2 controls
@@ -45,21 +47,26 @@ email me at: gabriel@gabotronics.com
 #define Misc        GPIOC   // Miscellaneous bits
 #define Index       GPIOD   // sample index
 #define Menu        GPIOE   // Menu
-#define Key         GPIOF   // Current key pressed
+#define Buttons     GPIOF   // Current buttons pressed
 
-// Global variables, using GPIO for optimized access
-#define WOptions    GPIOE   // Watch Options
-
-// WOptions         (GPIOE)
-#define update      0       // Refresh screen
-#define tick        1       // Bit gets flipped on every screen refresh
-#define military    2       // 12 or 24 hour
-#define seconds     3       // Display seconds
+// Watch - Global variables, using GPIO for optimized access
+#define NOW         0       // Address of Now variables
+#define NowSecond   GPIO0   // Second
+#define NowMinute   GPIO1   // Minute
+#define NowHour     GPIO2   // Hour
+#define NowDay      GPIO3   // Day
+#define NowMonth    GPIO4   // Month
+#define NowYear     GPIO5   // Year
+#define NowWeekDay  GPIO6   // Day of the Week
+#define AlarmHour   GPIO7   // Alarm Hour
+#define AlarmMinute GPIO8   // Alarm Minute
+#define WSettings   GPIO9   // Watch Options
+#define WatchBits   GPIOA   // Watch Bits
 
 // CH1ctrl bits    (GPIO1)
 #define chon        0       // Channel on
 #define x10         1       // x10 probe
-#define lowbatt     2       // VCC is below 3.15V
+
 #define acdc        3       // AC/DC Select
 #define chinvert    4       // Invert channel
 #define chaverage   5       // Average samples
@@ -69,7 +76,7 @@ email me at: gabriel@gabotronics.com
 // CH2ctrl bits    (GPIO2)
 #define chon        0       // Channel on
 #define x10         1       // x10 probe
-//#define       2      
+
 #define acdc        3       // AC/DC Select
 #define chinvert    4       // Invert channel
 #define chaverage   5       // Average samples
@@ -161,6 +168,7 @@ email me at: gabriel@gabotronics.com
 #define vdc         6       // Calculate VDC
 #define vp_p        7       // Calculate VPP
                             // Calculate frequency if other bits are 0
+                            // Counter if both bits are 1
 
 // Misc             (GPIOC) // Miscellaneous bits
 #define keyrep      0       // Automatic key repeat
@@ -169,34 +177,51 @@ email me at: gabriel@gabotronics.com
 #define redraw      3       // Redraw screen
 #define sacquired   4       // Data has been acquired (for slow sampling)
 #define slowacq     5       // Acquired one set of samples a slow sampling rates
-#define hour_pm     6       // VCC is below 3.15V
+#define userinput   6       // Valid input received
 #define autosend    7       // Continuously send data to UART
 
+// WSettings         (GPIO9) -  Watch Settings
+#define hourbeep    0       // On the hour beep
+#define alarm_on    1       // Alarm on
+#define time24      2       // 24 Hour format
+#define date_YMD    3       // Date format YYYY/MM/DD
+#define date_DMY    4       // Date format DD/MM/YYYY
+
+#define disp_secs   6       // Display seconds
+#define sound_off   7       // Sound off
+
+// WatchBits        (GPIOA) -  Watch Options
+#define goback      0       // Stay in function until exit
+#define disp_select 1       // Select active display buffer
+
+
+#define longpress   4       // Long Press
+#define prepress    5       // One cycle before entering Long press
+#define blink       6       // Item blink when changing time
+
 // Key              (GPIOF) // Key input
-#define K1          0       // K1 pressed
-#define K2          1       // K2 pressed
-#define K3          2       // K3 pressed
-#define KM          3       // KM pressed   Menu
-#define KI          4       // KI pressed   Increase
-#define KD          5       // KD pressed   Decrease
-#define KB          6       // KB pressed   Back
-#define userinput   7       // User input received
+#define KBR         0       // Button Bottom Right pressed
+#define K3          1       // Button Top 3 pressed
+#define K2          2       // Button Top 2 pressed
+#define K1          3       // Button Top 1 pressed
+#define KBL         4       // Button Bottom Left pressed
+#define KML         5       // Button Middle Left pressed
+#define KUR         6       // Button Upper Right pressed
+#define KUL         7       // Button Upper Left pressed
 
 //void WaitDisplay(void);
 uint8_t SP_ReadCalibrationByte(uint8_t location);	// Read out calibration byte.
 void WaitRefresh(void);
 void PowerDown(void);
-char NibbleToChar(uint8_t nibble);  // Converts a nibble to the corresponding ASCII representing the HEX value
-void printhex(uint8_t n);           // Prints a HEX number
-uint8_t half(uint8_t number);
-uint8_t twice(uint8_t number);
 void CPU_Fast(void);
 void CPU_Slow(void);
-void CHESS(void);
 void MSO(void);
-void SaveEE(void);          // Save settings to EEPROM
 void Calibrate(void);
 void CCPWrite( volatile uint8_t * address, uint8_t value );
+int16_t MeasureBattery(uint8_t scale);
+void Sound(uint8_t F1, uint8_t F2);
+void SoundOff(void);
+void delay_ms(uint16_t n);
 
 extern uint8_t EEMEM EESleepTime;     // Sleep timeout in minutes
 
@@ -207,30 +232,30 @@ typedef union {
         uint8_t     magn[FFT_N];	// Magnitude output: 128 bytes, IQ: 256 bytes
     } FFT;
     struct {
-        int8_t      CH1[512];		// CH1 Temp data
-        int8_t      CH2[512];		// CH2 Temp data
-        uint8_t     CHD[512];       // CHD Temp data
+        int8_t      CH1[4096];		// CH1 Temp data
+        int8_t      CH2[4096];		// CH2 Temp data
+        uint8_t     CHD[2048];       // CHD Temp data
         union {
             int16_t Vdc[2];             // Channel 1 and Channel 2 DC
             uint32_t Freq;
         } METER;        
     } IN;
     struct {
-        uint8_t AWGTemp1[256];
-        uint8_t AWGTemp2[256];
+        int8_t AWGTemp1[BUFFER_AWG];
+        int8_t AWGTemp2[BUFFER_AWG];
     } DATA;
     struct {
         union {
             struct {
-                uint8_t RX[1280];
-                uint8_t TX[1280];
+                uint8_t RX[BUFFER_SERIAL];
+                uint8_t TX[BUFFER_SERIAL];
             } Serial;
             struct {
-                uint8_t decoded[2048];
-                uint8_t addr_ack[513];
+                uint8_t decoded[BUFFER_I2C];
+                uint8_t addr_ack[BUFFER_I2C/4+1];
             } I2C;
             struct {
-                uint8_t decoded[2560];
+                uint8_t decoded[BUFFER_SERIAL*2];
             } All;
         } data;
         volatile uint16_t indrx;    // RX index
@@ -241,6 +266,50 @@ typedef union {
         uint8_t addr_ack_pos;       // counter for keeping track of all bits / location for DMA
         uint16_t baud;              // Baud rate
     } LOGIC;
+	struct {
+		uint8_t display_setup2[2];
+		uint8_t buffer2[DISPLAY_DATA_SIZE];
+		uint8_t buffer3[DISPLAY_DATA_SIZE];
+        uint8_t battery;
+        uint16_t x,y;               // Fractal pixel
+	} TIME;
+    struct {
+        uint8_t level;            // Level (Sets thinking time)
+        uint8_t Player1, Player2;
+        #define U 128             /* D() Stack array size (think depth), 4minimum */
+        struct {
+            short q,l,e;          /* Args: (q,l)=window, e=current eval. score         */
+            short m,v,            /* m=value of best move so far, v=current evaluation */
+            V,P;
+            unsigned char E,z,n;  /* Args: E=e.p. sqr.; z=level 1 flag; n=depth        */
+            signed char r;        /* step vector current ray                           */
+            unsigned char j,      /* j=loop over directions (rays) counter             */
+            B,d,                 /* B=board scan start, d=iterative deepening counter */
+            h,C,                 /* h=new ply depth?, C=ply depth?                    */
+            u,p,                 /* u=moving piece, p=moving piece type               */
+            x,y,                 /* x=origin square, y=target square of current move  */
+            F,                   /* F=e.p., castling skipped square                   */
+            G,                   /* G=castling R origin (corner) square               */
+            H,t,                 /* H=capture square, t=piece on capture square       */
+            X,Y,                 /* X=origin, Y=target square of best move so far     */
+            a;                   /* D() return address state                          */
+        } _, SA[U],*MP;          /* _=working set, SA=stack array, SP=stack pointer   */
+    } CHESS;
+    struct {
+		uint8_t display_setup2[2];
+		uint8_t buffer2[DISPLAY_DATA_SIZE];
+        uint8_t board[32][32];
+        SnakeStruct Player1, Player2;
+        uint8_t Fruitx,Fruity;
+        uint8_t Fruit;
+    } SNAKE;
+    struct {
+        uint8_t display_setup2[2];
+        uint8_t buffer2[DISPLAY_DATA_SIZE];
+        fixed   ballx, bally;
+        fixed   speedx, speedy;
+        PaddleStruct Player1, Player2;
+    } PONG;
 } TempData;
 
 // Variables that need to be stored in NVM
@@ -279,7 +348,47 @@ typedef struct {
     uint32_t    AWGdesiredF;    // 40 41 42 43 Desired frequency
 } NVMVAR;
 
-extern TempData Temp;
+extern TempData T;
 extern NVMVAR M;
+
+// Music notes frequency values for 8bit clock at 250kHz
+//      Note    Value   Actual  Desired
+#define NOTE_B5      252 //  988.14   987.77
+#define NOTE_C6      238 // 1046.02  1046.5
+#define NOTE_C_6     224 // 1111.11  1108.73
+#define NOTE_D6      212 // 1173.70  1174.66
+#define NOTE_D_6     200 // 1243.78  1244.51
+#define NOTE_E6      189 // 1315.78  1318.51
+#define NOTE_F6      178 // 1396.64  1396.91
+#define NOTE_F_6     168 // 1479.28  1479.98
+#define NOTE_G6      158 // 1572.32  1567.98
+#define NOTE_G_6     149 // 1666.67  1661.22
+#define NOTE_A6      141 // 1760.56  1760
+#define NOTE_A_6     133 // 1865.67	1864.66
+#define NOTE_B6      126 // 1968.50  1975.53
+#define NOTE_C7      118 // 2100.84  2093
+#define NOTE_C_7     112 // 2212.38  2217.46
+#define NOTE_D7      105 // 2358.49  2349.32
+#define NOTE_D_7     99  // 2500     2489.02
+#define NOTE_E7      94  // 2631.57  2637.02
+#define NOTE_F7      88  // 2808.98  2793.83
+#define NOTE_F_7     83  // 2976.19  2959.96
+#define NOTE_G7      79  // 3125     3135.96
+#define NOTE_G_7     74  // 3333.33  3322.44
+#define NOTE_A7      70  // 3521.12  3520
+#define NOTE_A_7     66  // 3731.34  3729.31
+#define NOTE_B7      62  // 3968.25  3951.07
+#define NOTE_C8      59  // 4166.67  4186.01
+#define NOTE_C_8     55  // 4464.28  4434.92
+#define NOTE_D8      52  // 4716.98  4698.63
+#define NOTE_D_8     49  // 5000     4978.03
+#define NOTE_E8      46  // 5319.14  5274.04
+#define NOTE_F8      44  // 5555.55  5587.65
+#define NOTE_F_8     41  // 5952.38  5919.91
+#define NOTE_G8      39  // 6250     6271.93
+#define NOTE_G_8     37  // 6578.94  6644.88
+#define NOTE_A8      34  // 7142.85	7040
+#define NOTE_A_8     33  // 7352.94  7458.62
+#define NOTE_B8      31  // 7812.5   7902.13
 
 #endif

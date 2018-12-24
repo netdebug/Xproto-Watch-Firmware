@@ -51,15 +51,15 @@
     </com_atmel_avrdbg_tool_jtagicemk3>
     <AsfFrameworkConfig>
       <framework-data>
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.15.0" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.20.1" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
     <OverrideVtor>false</OverrideVtor>
     <eraseonlaunchrule>0</eraseonlaunchrule>
@@ -152,6 +152,9 @@
         <avrgcc.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcc.assembler.debugging.DebugLevel>
       </AvrGcc>
     </ToolchainSettings>
+    <OutputFileName>oscilloscope-watch</OutputFileName>
+    <OutputFileExtension>.elf</OutputFileExtension>
+    <PreBuildEvent>$(MSBuildProjectDirectory)\Source\build_inc.bat $(MSBuildProjectDirectory)\Source\build.h</PreBuildEvent>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Source\asmutil.S">
@@ -166,6 +169,10 @@
       <SubType>compile</SubType>
       <Link>awg.c</Link>
     </Compile>
+    <Compile Include="Source\bitmaps.c">
+      <SubType>compile</SubType>
+      <Link>bitmaps.c</Link>
+    </Compile>
     <Compile Include="Source\data.c">
       <SubType>compile</SubType>
       <Link>data.c</Link>
@@ -177,10 +184,6 @@
     <Compile Include="Source\ffft.S">
       <SubType>compile</SubType>
       <Link>ffft.S</Link>
-    </Compile>
-    <Compile Include="Source\fonts.c">
-      <SubType>compile</SubType>
-      <Link>fonts.c</Link>
     </Compile>
     <Compile Include="Source\interface.c">
       <SubType>compile</SubType>
@@ -201,6 +204,14 @@
     <Compile Include="Source\mso.c">
       <SubType>compile</SubType>
       <Link>mso.c</Link>
+    </Compile>
+    <Compile Include="Source\pong.c">
+      <SubType>compile</SubType>
+      <Link>pong.c</Link>
+    </Compile>
+    <Compile Include="Source\snake.c">
+      <SubType>compile</SubType>
+      <Link>snake.c</Link>
     </Compile>
     <Compile Include="Source\time.c">
       <SubType>compile</SubType>

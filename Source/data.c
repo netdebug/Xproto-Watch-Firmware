@@ -19,7 +19,7 @@ email me at: gabriel@gabotronics.com
 #include "mso.h"
 
 // Commonly used text
-const char VERSION[]    PROGMEM = "FW 2.43";
+const char VERSION[]    PROGMEM = "FW 2.48";
 
 const uint32_t Powersof10[] PROGMEM = { 1,10,100,1000,10000,100000,1000000, 10000000 };
 // index                                0 1  2   3    4     5      6        7
@@ -175,28 +175,12 @@ const NVMVAR MAXM PROGMEM = {            // Flash Copy
     0x00BEFFFF,  //  AWGdesiredF;    // 12517375
 };
 
-const unsigned char BATTICON[] PROGMEM = {
-    0x7E,0x42,0x42,0x42,0x42,0x42,0x7E,0x18,
-};
-
 const unsigned char PULSE[] PROGMEM = {
     0x40,0x40,0x78,0x08,0x08,0x78,0x40,0x40,
 };
 
 const unsigned char PULSEINV[] PROGMEM = {
     0x08,0x08,0x78,0x40,0x40,0x78,0x08,0x08,
-};
-
-const unsigned char LOGO[] PROGMEM = {
-    '\x7e','\xff','\x81','\x91','\x91','\xf1','\x60','\x00', // 0x0008
-    '\x60','\xf4','\x94','\x94','\xfc','\xf8','\x00','\xff', // 0x0010
-    '\xff','\x84','\x84','\xfc','\x78','\x00','\x78','\xfc', // 0x0018
-    '\x84','\x84','\xfc','\x78','\x00','\x04','\x7f','\xff', // 0x0020
-    '\x84','\x84','\x00','\xfc','\xfc','\x08','\x0c','\x0c', // 0x0028
-    '\x00','\x78','\xfc','\x84','\x84','\xfc','\x78','\x00', // 0x0030
-    '\xf8','\xfc','\x04','\x04','\xfc','\xf8','\x00','\xfd', // 0x0038
-    '\xfd','\x00','\x78','\xfc','\x84','\x84','\x84','\x00', // 0x0040
-    '\x98','\xbc','\xb4','\xf4','\x64',
 };
 
 // Hamming window = 0.53836-0.46164*COS(2*PI*n/(FFT_N-1))

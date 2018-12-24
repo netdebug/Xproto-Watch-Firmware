@@ -49,9 +49,7 @@ extern const int8_t Hann[128];
 extern const int8_t Blackman[128];
 extern const int8_t Exp[128];
 extern int8_t EEMEM EEwave[256];
-extern const unsigned char BATTICON[];
 extern const unsigned char PULSE[];
 extern const unsigned char PULSEINV[];
-extern const unsigned char LOGO[];
 
 #endif

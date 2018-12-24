@@ -24,6 +24,7 @@ email me at: gabriel@gabotronics.com
 #include "display.h"
 #include "awg.h"
 #include "interface.h"
+//#include "usb_xmega.h"
 
 #define SOH     0x01    // start of heading
 #define STX     0x02    // start of text
@@ -56,7 +57,7 @@ ISR(USARTE0_RXC_vect) {
     char command;
     uint8_t *p;
     uint8_t i=0,j;
-    RTC.CNT=0;  // Clear screen saver timer
+
     OFFGRN();   // In case the LED was on
     command = USARTE0.DATA;
     switch(command) {
@@ -103,7 +104,7 @@ ISR(USARTE0_RXC_vect) {
             CheckPost();
 		    return;
         case 'm':   // Send METER measurement
-            p = (uint8_t *)(&Temp.IN.METER.Freq);
+            p = (uint8_t *)(&T.IN.METER.Freq);
             for(;i<4;i++) send(*p++); // Send 4 bytes
             return;            
         case 'p': clrbit(Misc,autosend); return;    // Do not automatically send data to UART
@@ -134,7 +135,7 @@ void WriteByte(uint8_t index, uint8_t value) {
     if(index<=5 || index==35 || index==38 || index==12 || index==13 ||
       (index>=24 && index<=28))  setbit(MStatus, update);      // Changing trigger
     if(index<=13) {
-		Temp.IN.METER.Freq = 0;			// Prevent sending outdated data
+		T.IN.METER.Freq = 0;			// Prevent sending outdated data
 		setbit(MStatus, updatemso);		// Settings are changing
 	}
     if(index>=36) setbit(MStatus, updateawg);
@@ -248,11 +249,11 @@ void send (uint8_t d) {
 
 // UART UDRE interrupt
 ISR(USARTE0_DRE_vect) {
-    uint8_t n, i;
+    uint8_t n;
     n = txfifo.count;
     if(n) {
         txfifo.count = --n;
-        i = txfifo.idx_r;
+        uint8_t i = txfifo.idx_r;
         USARTE0.DATA = txfifo.buff[i++];
         if(i >= sizeof(txfifo.buff)) i = 0;
         txfifo.idx_r = i;

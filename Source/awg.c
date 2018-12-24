@@ -3,7 +3,7 @@
 XMEGA Oscilloscope and Development Kit
 
 Gabotronics
-September 2012
+December 2018
 
 Copyright 2012 Gabriel Anzziani
 
@@ -21,7 +21,7 @@ email me at: gabriel@gabotronics.com
 #include "awg.h"
 
 // Global AWG variables
-uint8_t AWGBuffer[256]; // AWG Output Buffer
+uint8_t AWGBuffer[BUFFER_AWG]; // AWG Output Buffer
 uint8_t cycles;         // Cycles in AWG buffer
 
 void moveF(void) {
@@ -64,7 +64,7 @@ void BuildWave(void) {
     // Construct waveform                       // else cycles = 1, prescaler=2
     i=0;
     uint16_t Seed;
-    p=(int8_t *)Temp.DATA.AWGTemp1;
+    p=(int8_t *)T.DATA.AWGTemp1;
     switch(M.AWGtype) {
         case 0: // Random
             Seed = TCD1.CNT;
@@ -88,37 +88,38 @@ void BuildWave(void) {
             do { *p++ = pgm_read_byte_near(Exp-128+i); } while(++i);
         break;
         case 5: // Custom wave from EEPROM
-            eeprom_read_block(Temp.DATA.AWGTemp1, EEwave, 256);
+            eeprom_read_block(T.DATA.AWGTemp1, EEwave, BUFFER_AWG);
         break;
     }
     // Prepare buffer:
     // ******** Duty cycle ********
     uint16_t step=0;
-	uint16_t d;
-    i=0; d=(256-M.AWGduty)<<1;
-	int8_t k;
-    p=(int8_t *)Temp.DATA.AWGTemp1;
+	uint16_t inc;
+    i=0; inc=(256-M.AWGduty)<<1;
+    p=(int8_t *)T.DATA.AWGTemp1;
     do {
         j=hibyte(step);
-        Temp.DATA.AWGTemp2[j] = *p;
-        k=*p++;
-        if(j<255) Temp.DATA.AWGTemp2[j+1] = (k+(*p))/2;
-        step+=d;
-        if(i==127) d=M.AWGduty<<1;
+        T.DATA.AWGTemp2[j] = *p;
+        int8_t k=*p++;
+//        if(j<1023) Temp.DATA.AWGTemp2[j+1] = (k+(*p))/2;    // With interpolation
+        if(j<255) T.DATA.AWGTemp2[j+1] = *p;            // Without interpolation
+        step+=inc;
+        if(i==127) inc=M.AWGduty<<1;
     } while(++i);
-    i=0;
-    step = ((6250000 * cycles) / M.AWGdesiredF ) - 1;
+    uint16_t period;
+    period = ((6250000 * cycles) / M.AWGdesiredF ) - 1;
     PMIC.CTRL = 0x06;   // Disable low level interrupts
     if(cycles>1) TCD1.CTRLA = 0x01;   // Prescaler: clk/1
     else         TCD1.CTRLA = 0x02;   // Prescaler: clk/2
     // Avoid discontinuity when changing frequency by writing to PERBUF
-    TCD1.PERBUF = step;    // Set Period
+    TCD1.PERBUF = period;    // Set Period
     uint8_t c;
     c=cycles>>1;
     if(c==0) c++;
+    i=0;
     do {
     // ******** Multiply by Gain ********
-        j=FMULS8(M.AWGamp,Temp.DATA.AWGTemp2[(uint8_t)(i*c)]);
+        j=FMULS8(M.AWGamp,T.DATA.AWGTemp2[(uint8_t)(i*c)]);	// Keep index < 256
     // ******** Add Offset ********
         AWGBuffer[i]=saddwsat(j,M.AWGoffset);
     } while(++i);

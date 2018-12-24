@@ -1,7 +1,7 @@
 ; XMEGA Oscilloscope and Development Kit
 ;
 ; Gabotronics
-; March 2012
+; December 2018
 ;
 ; Copyright 2012 Gabriel Anzziani
 ;
@@ -12,6 +12,107 @@
 
 #include <avr/io.h>
 #include "hardware.h"
+
+.extern Disp_send
+.extern u8CursorX
+.extern u8CursorY
+
+; Disp_send.display_data[(uint16_t)((127-x)*18) + (y>>3)] |= (uint8_t)(0x80 >> (y & 0x07));
+.global set_pixel                   ; void setpixel(uint8_t x, uint8_t y);
+set_pixel:                          ; Disp_send+2 is Disp_send.buffer
+    lds     r30,Disp_send+2         ; r31:r30 = addr + 127*18
+    lds     r31,Disp_send+3
+    ldi     r25,0x12	            ; r25 = 18
+    mul     r24,r25                 ; r1:r0 = x*18
+    mov     r25,r22                 ; r25 = y
+    lsr     r25
+    lsr     r25                     ; r25 = y>>3
+    lsr     r25
+    sub     r30,r0                  ; r31:r30 = addr + 127*18 - x*18
+    sbc     r31,r1
+    clr     r1                      ; r1 = 0 gcc needs r1 cleared
+    add     r30,r25                 ; r31:r30 -= x*18 + y>>3
+    adc     r31,r1
+    ; Address is ready, now put data
+    andi    r22,0x07                ; y &= &0x07
+    ldi     r24,0x80                ; r24 = 0x80
+    rjmp    .+0x0002                ; Relative jump 
+0:
+    lsr     r24	                    ; r24 >>= 1
+    dec     r22                     ; Decrement y
+    brpl    0b                      ; repeat while y >= 0
+    las     z, r24                  ; OR bits in display data
+    ret
+
+// Other orientations, implement in the future if needed:
+// 0 degree orientation:
+// Disp_send.display_data[(uint16_t)(y<<4) + (x>>3)] |= (uint8_t)(0x80 >> (x & 0x07));
+// 90 degree orientation
+// y=127-y;
+// Disp_send.display_data[(uint16_t)(x<<4) + (y>>3)] |= (uint8_t)(0x80 >> (y & 0x07));
+
+; Disp_send.buffer[((uint16_t)((127-x)*18)) + (u8CursorY)] |= data;
+.global display_or               ; void write_display(uint8_t data);
+display_or:                      ; OR byte on display buffer
+    lds     r30, u8CursorX          ; r30 = u8CursorX
+    inc     r30                     ; r30++
+    sts     u8CursorX, r30          ; u8CursorX = r30
+    dec     r30                     ; r30 = original u8CursorX
+    ldi     r31,0x12	            ; r31 = 18
+    mul     r30,r31                 ; r1:r0 = x*18    
+    lds     r30,Disp_send+2         ; r31:r30 = addr + 127*18
+    lds     r31,Disp_send+3
+    sub     r30,r0                  ; r31:r30 = addr + 127*18 - x*18
+    sbc     r31,r1
+    clr     r1                      ; r1 = 0 gcc needs r1 cleared
+    lds     r0, u8CursorY           ; r0 = u8CursorY
+    add     r30,r0                  ; r31:r30 += y
+    adc     r31,r1
+    ; Address is ready, now put data
+    las     z, r24                  ; OR bits in display data
+    ret
+
+; Disp_send.buffer[((uint16_t)((127-x)*18)) + (u8CursorY)] ^= data;
+.global display_xor               ; void write_display(uint8_t data);
+display_xor:                      ; OR byte on display buffer
+    lds     r30, u8CursorX          ; r30 = u8CursorX
+    inc     r30                     ; r30++
+    sts     u8CursorX, r30          ; u8CursorX = r30
+    dec     r30                     ; r30 = original u8CursorX
+    ldi     r31,0x12	            ; r31 = 18
+    mul     r30,r31                 ; r1:r0 = x*18    
+    lds     r30,Disp_send+2         ; r31:r30 = addr + 127*18
+    lds     r31,Disp_send+3
+    sub     r30,r0                  ; r31:r30 = addr + 127*18 - x*18
+    sbc     r31,r1
+    clr     r1                      ; r1 = 0 gcc needs r1 cleared
+    lds     r0, u8CursorY           ; r0 = u8CursorY
+    add     r30,r0                  ; r31:r30 += y
+    adc     r31,r1
+    ; Address is ready, now put data
+    lat     z, r24                  ; XOR bits in display data
+    ret
+
+; Disp_send.buffer[((uint16_t)((127-x)*18)) + (u8CursorY)] = data;
+.global display_set                 ; void write_display(uint8_t data);
+display_set:                        ; OR byte on display buffer
+    lds     r30, u8CursorX          ; r30 = u8CursorX
+    inc     r30                     ; r30++
+    sts     u8CursorX, r30          ; u8CursorX = r30
+    dec     r30                     ; r30 = original u8CursorX
+    ldi     r31,0x12	            ; r31 = 18
+    mul     r30,r31                 ; r1:r0 = x*18    
+    lds     r30,Disp_send+2         ; r31:r30 = addr + 127*18
+    lds     r31,Disp_send+3
+    sub     r30,r0                  ; r31:r30 = addr + 127*18 - x*18
+    sbc     r31,r1
+    clr     r1                      ; r1 = 0 gcc needs r1 cleared
+    lds     r0, u8CursorY           ; r0 = u8CursorY
+    add     r30,r0                  ; r31:r30 += y
+    adc     r31,r1
+    ; Address is ready, now put data
+    std     z+0, r24	            ; SET data in display
+    ret
 
 ;----------------------------------------------------------------------------;
 ; ADD with Saturation
@@ -492,7 +593,7 @@ post:
     sbrs    R0,0            ; jump if overflow
     rjmp    0b
 
-    STS     0x0A00,R1       ; Stop Timer TCE0 (for srate > 5)
+    STS     0x0A40,R1       ; Stop Timer TCE1 (for srate > 5)
     STS     0x0201,R24      ; Store 0x14 in ADCA.CTRLB (signed mode, NO free run, 8 bit)
     sbic    0x000B,0        ; 1 cycle ; Status update? (GPIOB)
     cbi     0x000B, 5       ; Clear trigger if update was set (key pressed and disrupted acq)
