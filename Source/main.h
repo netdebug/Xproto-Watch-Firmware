@@ -300,6 +300,7 @@ typedef union {
         uint8_t board[32][32];
         SnakeStruct Player1, Player2;
         uint8_t Fruitx,Fruity;
+        uint8_t Fruit;
     } SNAKE;
     struct {
         uint8_t display_setup2[2];

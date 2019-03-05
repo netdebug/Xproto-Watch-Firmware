@@ -205,6 +205,10 @@
       <SubType>compile</SubType>
       <Link>mso.c</Link>
     </Compile>
+    <Compile Include="Source\pong.c">
+      <SubType>compile</SubType>
+      <Link>pong.c</Link>
+    </Compile>
     <Compile Include="Source\snake.c">
       <SubType>compile</SubType>
       <Link>snake.c</Link>

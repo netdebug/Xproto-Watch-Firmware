@@ -31,6 +31,7 @@ void InitSnake(void) {
     T.SNAKE.Player2.y[0]=T.SNAKE.Player2.y[1]=29;
     T.SNAKE.Player2.size=2;
     T.SNAKE.Player2.direction = GO_LEFT;
+    T.SNAKE.Fruit = 0;
 }
 
 // Spawn new fruit
@@ -46,6 +47,7 @@ void NewFruit(void) {
       (T.SNAKE.board[T.SNAKE.Fruitx][T.SNAKE.Fruity]!=EMPTY)); // Occupied
     T.SNAKE.board[T.SNAKE.Fruitx][T.SNAKE.Fruity] = FRUIT;       // New head position
     if(TCC0.PER>250) TCC0.PERBUF=multfix(TCC0.PER, float2fix(0.9));   // Speed up
+    T.SNAKE.Fruit++;
 }
 
 void Snake(void) {
@@ -174,9 +176,11 @@ void MoveSnake(SnakeStruct *Player) {
         T.SNAKE.board[Player->x[0]][Player->y[0]] = Player->state;       // New head position
         if(T.SNAKE.Fruitx==Player->x[0] && T.SNAKE.Fruity==Player->y[0]) {  // Got Fruit!
             if(Player->size<=(32*32)) {
-                Player->x[Player->size]=Player->x[Player->size-1];          // Extend tail
-                Player->y[Player->size]=Player->y[Player->size-1];
-                Player->size++;
+                for(uint8_t i=0; i<T.SNAKE.Fruit; i++) {
+                    Player->x[Player->size+i]=Player->x[Player->size-1];          // Extend tail
+                    Player->y[Player->size+i]=Player->y[Player->size-1];
+                }                    
+                Player->size+=T.SNAKE.Fruit;
                 NewFruit();
             }                
         }
@@ -273,7 +277,8 @@ void SnakeEngine(void) {
             WaitDisplay();    
             dma_display();
             SwitchBuffers();
-            if(T.SNAKE.Player1.state==0 && T.SNAKE.Player2.state==0) {
+            if((T.SNAKE.Player1.state==0 || T.SNAKE.Player1.state==NO_PLAYER1) &&
+               (T.SNAKE.Player2.state==0 || T.SNAKE.Player2.state==NO_PLAYER2)) {
                 setbit(WatchBits, goback);
                 lcd_goto(38,13); lcd_put5x8(PSTR("Game Over"));
             }

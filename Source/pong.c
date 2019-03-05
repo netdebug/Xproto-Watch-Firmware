@@ -28,11 +28,11 @@ void NewPoint(void) {
     T.PONG.ballx = int2fix(64);
     T.PONG.bally = int2fix(64);
     do {    // Minimum initial speed x
-        T.PONG.speedx = (int)128-prandom();
+        T.PONG.speedx = (int)128-qrandom();
     } while(T.PONG.speedx<4 && T.PONG.speedx>-4);
     do {    // Minimum initial speed y
-        T.PONG.speedy = (int)128-prandom();
-    } while(T.PONG.speedy<32 && T.PONG.speedy>-32);
+        T.PONG.speedy = (int)128-qrandom();
+    } while(T.PONG.speedy<128 && T.PONG.speedy>-128);
 }
 
 void Pong(void) {
@@ -88,10 +88,10 @@ void MovePaddle(PaddleStruct *Player) {
     uint8_t bx=fix2int(T.PONG.ballx);
     if(Player==&T.PONG.Player2 && T.PONG.speedy<0 && T.PONG.bally<int2fix(4) ||     // Top check
        Player==&T.PONG.Player1 && T.PONG.speedy>0 && T.PONG.bally>int2fix(123)) {   // Bottom check
-        if(bx>=Player->x1 && bx<=Player->x2) {
+        if(bx>=Player->x1 && bx<=Player->x2) {              // Bounce
             T.PONG.speedy =-T.PONG.speedy;
-            T.PONG.speedx = multfix(T.PONG.speedx,float2fix(1.1));
-            T.PONG.speedy = multfix(T.PONG.speedy,float2fix(1.1));
+            T.PONG.speedx = multfix(T.PONG.speedx,float2fix(1.25));
+            T.PONG.speedy = multfix(T.PONG.speedy,float2fix(1.25));
             if(bx==Player->x1)  T.PONG.speedx -=256;        // Maximum paddle effect
             else if(bx==Player->x2)  T.PONG.speedx +=256;   // Maximum paddle effect
             else T.PONG.speedx += 2*((int16_t)bx-x);        // Paddle effect

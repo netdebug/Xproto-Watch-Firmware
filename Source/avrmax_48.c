@@ -109,10 +109,10 @@ void Chess(void) {
                 if(testbit(Buttons, KML)) setbit(WatchBits, goback);
             }
             lcd_goto(50,0); lcd_put5x8(PSTR("Chess"));
-            lcd_goto(0,2); lcd_put5x8(PSTR("Player 1: "));
+            lcd_goto(0,2); lcd_put5x8(PSTR("White: "));
             if(p&0x01) { lcd_put5x8(PSTR("CPU  ")); T.CHESS.Player1 = CPU_PLAYER1; }
             else       { lcd_put5x8(PSTR("Human")); T.CHESS.Player1 = HUMAN_PLAYER1; }
-            lcd_goto(0,3); lcd_put5x8(PSTR("Player 2: "));
+            lcd_goto(0,3); lcd_put5x8(PSTR("Black: "));
             if(p&0x02) { lcd_put5x8(PSTR("CPU  ")); T.CHESS.Player2 = CPU_PLAYER1; }
             else       { lcd_put5x8(PSTR("Human")); T.CHESS.Player2 = HUMAN_PLAYER1; }
             lcd_goto(0,4); lcd_put5x8(PSTR("Level: ")); printN_5x8(T.CHESS.level);

@@ -344,7 +344,7 @@ void Watch(void) {
                     // Pre calculate background image, save in buffer 3
                     CPU_Fast();
                     Disp_send.buffer=T.TIME.buffer3+127*18;
-                    clr_display();
+                    clr_display_3();
                     for(uint8_t i=0; i<60; i++) {   // Circumference markers
                         lcd_line(63+Sine60(i,60),63-Cosine60(i,60),
                         63+Sine60(i,63),63-Cosine60(i,63));

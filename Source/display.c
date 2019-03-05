@@ -61,6 +61,19 @@ void clr_display_1(void) {
     lcd_goto(0,0);
 }
 
+// Clear display buffer, main buffer
+void clr_display_3(void) {
+    uint8_t *p;
+    p=T.TIME.buffer3;
+    for(uint8_t i=0; i<128; i++) {
+        for(uint8_t j=0; j<16; j++) {
+            *p++=0;
+        }
+        p+=2;   // Skip line LCD setup
+    }
+    lcd_goto(0,0);
+}
+
 // Safe pixel on display buffer with "color"
 // show represents the probability of setting the pixel
 // with show==0 to clear, and show==255 to set

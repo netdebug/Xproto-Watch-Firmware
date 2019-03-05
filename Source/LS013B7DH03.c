@@ -40,7 +40,6 @@ void GLCD_LcdInit(void)	{
     //setbit(LCD_CTRL,LCDVDD);            // Power for display
     //_delay_ms(1);
     //clrbit(LCD_CTRL, LCD_DISP);         // DISP OFF
-    LcdInstructionWrite(CLEAR_ALL);     // Clear Screen
     setbit(LCD_CTRL, LCD_DISP);         // DISP ON
 	LCD_PrepareBuffers();
 }

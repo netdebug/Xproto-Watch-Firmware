@@ -74,6 +74,7 @@ void printN_5x8(uint8_t Data);
 void SwitchBuffers(void);
 void clr_display(void);
 void clr_display_1(void);
+void clr_display_3(void);
 void dma_display(void);
 void pixel(uint8_t x, uint8_t y, uint8_t c);
 void toggle_pixel(uint8_t x, uint8_t y);

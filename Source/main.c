@@ -217,12 +217,9 @@ int main(void) {
     PORTCFG.VPCTRLA = 0x41;         // VP1 Map to PORTE, VP0 Map to PORTB
     PORTCFG.VPCTRLB = 0x32;         // VP3 Map to PORTD, VP2 Map to PORTC    
     
-    // Initialize LCD
-    GLCD_LcdInit();
+    LowPower();                     // Analog off, Slow CPU
     SwitchBuffers();
 	clr_display();
-    CPU_Slow();
-    
     DMA.CTRL          = 0x80;       // Enable DMA, single buffer, round robin
     
     // TIME CONTROL!
@@ -447,7 +444,7 @@ void AnalogOn(void) {
 
 // Analog off, Slow CPU
 void LowPower(void) {
-    LCD_PrepareBuffers();
+    GLCD_LcdInit();                 // Initialize LCD
     ANALOG_OFF();
     DMA.CTRL          = 0x00;       // Disable DMA
     DMA.CTRL          = 0x40;       // Reset DMA
