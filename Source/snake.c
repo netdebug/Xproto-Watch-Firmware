@@ -1,6 +1,5 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 #include <avr/pgmspace.h>
 #include "main.h"
 #include "utils.h"
@@ -84,9 +83,7 @@ void Snake(void) {
         }
         dma_display();
         WaitDisplay();
-        SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
-        asm("sleep");
-        asm("nop");
+        SLP();          // Sleep
     } while(!testbit(WatchBits,goback));
     setbit(MStatus, update);
 }

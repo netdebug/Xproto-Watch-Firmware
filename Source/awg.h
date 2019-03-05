@@ -3,9 +3,9 @@
 XMEGA Oscilloscope and Development Kit
 
 Gabotronics
-February 2012
+December 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
 This program is distributed under the terms of the GNU General Public License 
 

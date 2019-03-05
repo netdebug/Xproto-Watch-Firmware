@@ -1,13 +1,13 @@
 /****************************************************************************
 
-XMEGA Oscilloscope and Development Kit
+Oscilloscope Watch
 
 Gabotronics
-February 2012
+December 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
-This program is distributed under the terms of the GNU General Public License
+This program is distributed under the terms of the GNU General Public License 
 
 www.gabotronics.com
 email me at: gabriel@gabotronics.com
@@ -25,6 +25,7 @@ email me at: gabriel@gabotronics.com
 #include "asmutil.h"
 #include "data.h"
 #include "display.h"
+#include "bitmaps.h"
 #include "hardware.h"
 #include "games.h"
 
@@ -167,6 +168,7 @@ email me at: gabriel@gabotronics.com
 #define vdc         6       // Calculate VDC
 #define vp_p        7       // Calculate VPP
                             // Calculate frequency if other bits are 0
+                            // Counter if both bits are 1
 
 // Misc             (GPIOC) // Miscellaneous bits
 #define keyrep      0       // Automatic key repeat
@@ -178,8 +180,7 @@ email me at: gabriel@gabotronics.com
 #define userinput   6       // Valid input received
 #define autosend    7       // Continuously send data to UART
 
-// WSettings         (GPIO9) -  Watch Options
-// 24Hr format, Date Format, Hour Beep, Alarm On, 
+// WSettings         (GPIO9) -  Watch Settings
 #define hourbeep    0       // On the hour beep
 #define alarm_on    1       // Alarm on
 #define time24      2       // 24 Hour format
@@ -193,7 +194,7 @@ email me at: gabriel@gabotronics.com
 #define goback      0       // Stay in function until exit
 #define disp_select 1       // Select active display buffer
 
-#define hour_pm     3       // Time am / pm
+
 #define longpress   4       // Long Press
 #define prepress    5       // One cycle before entering Long press
 #define blink       6       // Item blink when changing time
@@ -240,8 +241,8 @@ typedef union {
         } METER;        
     } IN;
     struct {
-        uint8_t AWGTemp1[BUFFER_AWG];
-        uint8_t AWGTemp2[BUFFER_AWG];
+        int8_t AWGTemp1[BUFFER_AWG];
+        int8_t AWGTemp2[BUFFER_AWG];
     } DATA;
     struct {
         union {

@@ -1,11 +1,11 @@
-/***********************************************************************
+/****************************************************************************
 
-My GCC definitions
+Oscilloscope Watch
 
 Gabotronics
-February 2012
+December 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
 This program is distributed under the terms of the GNU General Public License 
 
@@ -89,6 +89,9 @@ email me at: gabriel@gabotronics.com
 
 static __inline__ void NOP (void) { __asm__ volatile ( "nop    " "\n\t" ); }
 static __inline__ void WDR (void) { __asm__ volatile ( "wdr    " "\n\t" ); }
+static __inline__ void CLT (void) { __asm__ volatile ( "clt    " "\n\t" ); }
+static __inline__ void SET (void) { __asm__ volatile ( "set    " "\n\t" ); }
+static __inline__ void SLP (void) { __asm__ volatile ( "sleep  " "\n\t" ); }
 
 // ### ROL ### Logical Rotate Left Of Register Through Carry 
 #define ASM_ROL(reg) asm volatile ("rol %0" : "=r" (reg) : "0" (reg)) 

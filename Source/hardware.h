@@ -1,5 +1,18 @@
-// OSCILLOSCOPE WATCH
-// Hardware specific definitions
+/****************************************************************************
+
+Oscilloscope Watch
+
+Gabotronics
+December 2018
+
+Copyright 2018 Gabriel Anzziani
+
+This program is distributed under the terms of the GNU General Public License 
+
+www.gabotronics.com
+email me at: gabriel@gabotronics.com
+
+*****************************************************************************/
 
 #ifndef HARDWARE_H
 #define HARDWARE_H
@@ -47,7 +60,7 @@
 
 #define AWG_SCALE 16    // Oscilloscope Watch has 4V output on the AWG
 
-#define BUFFER_AWG          1024    // Buffer size for the AWG output
+#define BUFFER_AWG          256     // Buffer size for the AWG output
 #define BUFFER_I2C          2048    // Buffer size for the I2C sniffer
 #define BUFFER_SERIAL       1280    // Buffer size for SPI or UART Sniffer
 #define DATA_IN_PAGE_SERIAL 80      // Data that fits on a page in the sniffer

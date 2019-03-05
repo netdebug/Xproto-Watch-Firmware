@@ -1,7 +1,7 @@
 ; XMEGA Oscilloscope and Development Kit
 ;
 ; Gabotronics
-; March 2012
+; December 2018
 ;
 ; Copyright 2012 Gabriel Anzziani
 ;

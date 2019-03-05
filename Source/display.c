@@ -2,7 +2,6 @@
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 #include "display.h"
-#include "fonts.h"
 #include "mygccdef.h"
 #include "main.h"
 #include "mso.h"
@@ -98,7 +97,6 @@ void sprite(uint8_t x, uint8_t y, const int8_t *ptr) {
         set_pixel(x+a,y+b);
     } while(1);
 }
-
 
 //-----------------------------------------------------------------------
 void lcd_line(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) {
@@ -443,15 +441,15 @@ Print a char on the LCD
 -------------------------------------------------------------------------------*/
 void GLCD_Bigchar (char u8Char) {
 	if(u8Char=='.') {           // Small point to Save space
-		display_set(0x60);
-		display_set(0x60);
+		display_set(0x06);
+		display_set(0x06);
 		u8CursorX+=2;
 	}
 	else if(u8Char=='-') {      // Negative sign
-		display_set(0x03);
-		display_set(0x03);
-		display_set(0x03);
-		display_set(0x03);
+		display_set(0xC0);
+		display_set(0xC0);
+		display_set(0xC0);
+		display_set(0xC0);
 		u8CursorX+=2;
     }
 	else if(u8Char==' ') {      // Space
@@ -558,6 +556,19 @@ void printN5x8(uint8_t Data) {
 	while (Data>=10)	{ d++; Data-=10; }
     putchar5x8(d);
     putchar5x8(Data+0x30);
+}
+
+// Print Number 0-255 with the small 7 segment font
+void printN_7seg(uint8_t x, uint8_t y, uint8_t Data, uint8_t digits) {
+    uint8_t n=Data, d=0, h=0;
+    while(n>=100) { h++; n-=100; }
+    while (n>=10) { d++; n-=10; }
+    if(digits>=3) {
+        bitmap(x,   y,(const uint8_t *)pgm_read_word(sDIGITS+h));
+        x+=13;
+    }        
+    bitmap(x,y,(const uint8_t *)pgm_read_word(sDIGITS+d));
+    bitmap(x+13,y,(const uint8_t *)pgm_read_word(sDIGITS+n));
 }
 
 // Print Number 0-99

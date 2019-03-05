@@ -27,7 +27,6 @@
 
 #include <avr/io.h>       
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 #include <avr/pgmspace.h>
 #include "main.h"
 #include "utils.h"
@@ -120,9 +119,7 @@ void Chess(void) {
         }
         dma_display();
         WaitDisplay();
-        SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
-        asm("sleep");
-        asm("nop");
+        SLP();          // Sleep
     } while(!testbit(WatchBits, goback));
     setbit(MStatus, update);
 }
@@ -238,9 +235,7 @@ void PlayChess(void) {
                     dma_display();
                     WaitDisplay();
                     OFFRED();
-                    SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
-                    asm("sleep");
-                    asm("nop");
+                    SLP();          // Sleep
                 } while(!(testbit(WatchBits, goback) || testbit(WatchBits, blink)));
             }            
             else {

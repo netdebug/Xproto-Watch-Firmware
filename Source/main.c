@@ -3,7 +3,7 @@
 Oscilloscope Watch
 
 Gabotronics
-November 2018
+December 2018
 
 Copyright 2018 Gabriel Anzziani
 
@@ -31,7 +31,7 @@ email me at: gabriel@gabotronics.com
         MSO Logic Analyzer more SPS, with DMA
         Force trigger, Trigger timeout in menu
 		USB Frame counter
-        Disable gain on CH1 if Gain=1, to allow simultaneous sampling
+        Use both ADCs
         Channel math in meter mode
 		USE NVM functions from BOOT */
 // TODO When 64k parts come out:
@@ -54,34 +54,33 @@ email me at: gabriel@gabotronics.com
         Horizontal cursor on FFT
         16MSPS for logic data, 1/sinc(x) for analog
 	    Show menu title */
-// TODO Expansion boards: SD, Keyboard, Display, RS232, MIDI, Video, RAM
 
 /* Hardware resources:
     Timers:
-        RTC   Half second timer
+        RTC   Second timer
         TCC0  Frequency counter time keeper
             Also used as split timer, source is Event CH7 (40.96mS)
             TCC0L Controls the auto trigger
             TCC0H Auto key repeat
         TCC1  Counts post trigger samples
               UART sniffer time base
-              Frequency counter low 16bits
         TCD0  Split timer, source is Event CH6 (1.024ms)
             TCD0L 40.96mS period - 24.4140625 Hz - Source for Event CH7
 	        TCD0H Controls LCD refresh rate
 	    TCD1  Overflow used for AWG
         TCE0  Sounds
+              Frequency counter low 16bits
         TCE1  Controls Interrupt ADC (srate >= 11), srate: 6, 7, 8, 9, 10
               Fixed value for slow sampling
               Frequency counter high 16bits
-        TCF0  Half Days counter
+        TCF0  Seconds counter
     Events:
 	    CH0 TCE1 overflow used for ADC
 	    CH1 ADCA CH0 conversion complete
         CH2 Input pin for frequency measuring
         CH3 TCD1 overflow used for DAC
-        CH4 TCC0 overflow used for freq. measuring
-        CH5 TCC1 overflow used for freq. measuring
+        CH4 RTC overflow used for Time and freq. measuring
+        CH5 TCE0 overflow used for freq. measuring
         CH6 CLKPER / 32768 -> every 1.024ms
         CH7 TCD0L underflow: 40.96mS period - 24.4140625 Hz
 	DMAs:
@@ -120,7 +119,6 @@ email me at: gabriel@gabotronics.com
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 #include <avr/fuse.h>
 #include "main.h"
 #include "mso.h"
@@ -181,7 +179,7 @@ void AnalogOn(void);
 void LowPower(void);
 void Diagnose(void);
 void About(void);
-    
+
 int main(void) {
     PR.PRGEN = 0b01011000;          // Power Reduction: USB, AES, EBI, EVSYS, only RTC and DMA on
     PR.PRPA  = 0b00000111;          // Power Reduction: DAC, ADC, AC
@@ -233,8 +231,7 @@ int main(void) {
     TCF0.CTRLA = 0x0C;              // Source is Event CH4
     TCF0.INTCTRLA = 0x01;           // 12 hour interrupt, low level interrupt
     eeprom_read_block(NOW, &saved_time, sizeof(time_var));   // Load latest known time
-    SetTimeTimer();                 // Load Time Timer with current time variables
-    findweekday(NOW);               // Set the correct day of the week from the current time
+    SetTimeTimer();                 // Load TCF0 Timer with current time variables
     PMIC.CTRL = 0x07;               // Enable High, Medium and Low level interrupts
     sei();                          // Enable global interrupts    
 
@@ -267,13 +264,21 @@ int main(void) {
                     if(testbit(Buttons,K3)) {
                         AnalogOn();
                         RTC.INTCTRL = 0x00;                     // Disable RTC interrupts
+                        TCF0.INTCTRLB = 0x00;                   // Disable 1 minute interrupt
                         // During the Scope mode, TCD0 will generate 1Hz for the Memory LCD EXTCOMM
                         TCD0.CTRLB = 0b00010000;                // Enable HCMPENA, pin4
                         TCD0.CCAH = 128;                        // Automatic EXTCOMM with Timer D0                        
-                        MSO();              // go to MSO
+                        MSO();                                  // go to MSO
+                        eeprom_read_block(NOW, &saved_time, sizeof(time_var));   // Load latest known time
+                        GetTimeTimer();                         // Sync variables from TCF0
+                        findweekday(NOW);
+                        WatchBits = 0;
+                        WSettings = 0;
                         TCD0.CTRLB = 0;
                         TCD0.CCAH = 0;
+                        SetMinuteInterrupt();                   // Set minute interrupt
                         RTC.INTCTRL = 0x05;
+                        setbit(MStatus, update);
                     }                        
                 break;
                 case 3:     // Games Menu
@@ -332,15 +337,12 @@ int main(void) {
             timeout=0;
             clrbit(MStatus, update);
         }
-        if(timeout>=250) {  // Screen saver. Draw icon the icon all over the screen
+        if(timeout>=250) {  // Go back to Watch mode
             timeout=0;
-            bitmap_safe((qrandom()>>1)-48,(qrandom()&0x0F)-4,(uint8_t *)pgm_read_word(Icons+Menu),5);
-            dma_display();
+            Watch();
         }
         WaitDisplay();
-        SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
-        asm("sleep");
-        asm("nop");
+        SLP();          // Sleep
     }        
     return 0;
 }
@@ -378,7 +380,7 @@ ISR(PORTF_INT0_vect) {
         setbit(MStatus, update);         // Valid key
         setbit(Misc, userinput);
         // TD0H used for auto repeat key
-        if(TCC0.CTRLE!=0) {             // Not doing a frequency count
+        if(TCC0.CTRLA == 0x0F) {             // Not doing a frequency count
             TCC0.CNTH = 24;                             // Restart timer
             setbit(TCC0.INTFLAGS, TC2_HUNFIF_bp);       // Clear trigger timeout interrupt
             TCC0.INTCTRLA |= TC2_HUNFINTLVL_LO_gc;      // Enable Auto Key interrupt
@@ -420,12 +422,17 @@ void CPU_Fast(void) {
 }
 
 void CPU_Slow(void) {
-    OSC.CTRL |= OSC_RC2MEN_bm;  // Enable internal 2MHz
-    delay_ms(2);
+    OSC.CTRL |= OSC_RC2MEN_bm;          // Enable internal 2MHz
+    do {
+        delay_ms(2);
+    } while((OSC.STATUS&0x01)==0);      // Wait until 2MHz is stable
     CCPWrite(&CLK.CTRL, CLK_SCLKSEL_RC2M_gc);    // Switch to 2MHz clock
-    OSC.CTRL = OSC_RC2MEN_bm;
-    OSC.PLLCTRL = 0;
-    OSC.XOSCCTRL = 0;
+    do {
+        OSC.XOSCCTRL = 0x00;                // Disable external oscillators
+        OSC.PLLCTRL = 0;
+        delay_ms(1);
+        OSC.CTRL = OSC_RC2MEN_bm;
+    } while(OSC.CTRL!=OSC_RC2MEN_bm);
     USARTD0.BAUDCTRLA = FBAUD2M;	    // SPI clock rate for display, CPU is at 2MHz
     NVM.CTRLB = 0b00001110;             // EEPROM Mapping, Turn off bootloader flash, Turn off EEPROM
 }
@@ -445,11 +452,25 @@ void AnalogOn(void) {
 // Analog off, Slow CPU
 void LowPower(void) {
     GLCD_LcdInit();                 // Initialize LCD
+    CCPWrite(&WDT.CTRL, WDT_CEN_bm); // Watchdog off
+    SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
     ANALOG_OFF();
-    DMA.CTRL          = 0x00;       // Disable DMA
-    DMA.CTRL          = 0x40;       // Reset DMA
-    ADCA.CTRLA        = 0x00;       // Disable ADC
-    ADCB.CTRLA        = 0x00;       // Disable ADC
+    TCC0.CTRLA = 0;                 // Stop timer prior to reset
+    TCC0.CTRLFSET   = 0x0F;         // Reset timer
+    TCC1.CTRLA = 0;                 // Stop timer prior to reset
+    TCC1.CTRLFSET   = 0x0F;         // Reset timer
+    TCD0.CTRLA = 0;                 // Stop timer prior to reset
+    TCD0.CTRLFSET   = 0x0F;         // Reset timer
+    TCD1.CTRLA = 0;                 // Stop timer prior to reset
+    TCD1.CTRLFSET   = 0x0F;         // Reset timer
+    TCE0.CTRLA = 0;                 // Stop timer prior to reset
+    TCE0.CTRLFSET   = 0x0F;         // Reset timer
+    TCE1.CTRLA = 0;                 // Stop timer prior to reset
+    TCE1.CTRLFSET   = 0x0F;         // Reset timer
+    DMA.CTRL        = 0x00;         // Disable DMA
+    DMA.CTRL        = 0x40;         // Reset DMA
+    ADCA.CTRLA      = 0x00;         // Disable ADC
+    ADCB.CTRLA      = 0x00;         // Disable ADC
     // POWER REDUCTION: Stop unused peripherals - Stop everything but RTC and DMA
     PR.PRGEN = 0b01011000;          // Stop: USB, AES, EBI, EVSYS, only RTC and DMA on
     PR.PRPA  = 0b00000111;          // Stop: DAC, ADC, AC
@@ -780,9 +801,7 @@ void PowerDown(void) {
     //GLCD_LcdOff();
     while(Buttons);
     PORTE.OUTCLR = 0x01;    // Power up clear
-    SLEEP.CTRL = SLEEP_SMODE_PDOWN_gc | SLEEP_SEN_bm;
-    asm("sleep");
-    SLEEP.CTRL = 0x00;
+    SLP();                  // Sleep
     GLCD_LcdInit();
     PORTE.OUTSET = 0x01;    // Power up
 	Buttons=0;
@@ -838,11 +857,11 @@ int16_t MeasureBattery(uint8_t scale) {
     ANALOG_ON();
     PR.PRPA  &= 0b11111101;         // Enable ADCA module
     BATT_TEST_ON();
-    delay_ms(10);
+    delay_ms(25);
     ADCA.CTRLA   = 0x01;            // Enable ADC
     ADCA.CTRLB   = 0x70;            // Limit ADC current, signed mode, no free run, 12 bit right
     ADCA.REFCTRL = 0x20;            // REF = AREF (2.048V)
-    if(CLK.CTRL==0) {               // CPU is running at 2MHz
+    if(CLK.CTRL==0) {               // CPU is running a t 2MHz
         ADCA.PRESCALER = 0x00;      // DIV4
     }
     else {                          // CPU is running at 32MHz
@@ -859,16 +878,17 @@ int16_t MeasureBattery(uint8_t scale) {
     ADCA.REFCTRL = 0x00;            // Bandgap off    
     PR.PRPA  |= 0b00000010;         // Disable ADCA
     if(scale) return volt;
-    //if(volt>=4500) return 11;     // Charging
-    if(volt>=4100) return 10;       // Estimated charge
-    if(volt>=4000) return 9;
-    if(volt>=3900) return 8;
-    if(volt>=3800) return 7;
-    if(volt>=3750) return 6;
-    if(volt>=3700) return 5;
-    if(volt>=3650) return 4;
-    if(volt>=3600) return 3;
-    if(volt>=3550) return 2;
+    //if(volt>=4500) return 12;     // Charging
+    if(volt>=4100) return 11;       // Estimated charge
+    if(volt>=4000) return 10;
+    if(volt>=3900) return 9;
+    if(volt>=3800) return 8;
+    if(volt>=3750) return 7;
+    if(volt>=3700) return 6;
+    if(volt>=3650) return 5;
+    if(volt>=3600) return 4;
+    if(volt>=3550) return 3;
+    if(volt>=3525) return 2;
     if(volt>=3500) return 1;
     return 0;
 }
@@ -879,6 +899,14 @@ void Diagnose(void) {
     setbit(MStatus, update);
     setbit(Misc,bigfont);
     clrbit(WatchBits,goback);
+    PR.PRPC  &= 0b11111100;         // Enable TCC0 TCC1 clocks
+    EVSYS.CH0MUX = 0b11000000;      // Event CH0 = TCC0 overflow
+    TCC0.CNT = 0;
+    TCC0.PER = 59999;
+    TCC1.CNT = 0;
+    TCC1.PER = 59999;
+    TCC0.CTRLA = 3;                 // CPU clock
+    TCC1.CTRLA = 0b00001000;        // Source is Event CH0
     do {
         uint8_t temp = TCF0.CNTL;
         batt = MeasureBattery(1);
@@ -886,39 +914,49 @@ void Diagnose(void) {
         else if((temp&0x03) == 1) ONGRN();
         else if((temp&0x03) == 2) ONRED();
         else Sound(NOTE_B7,NOTE_B7);
-        if(testbit(MStatus, update)) {
-            clrbit(MStatus, update);
-            clr_display();
-            lcd_goto(0,0);
-            lcd_put5x8(VERSION); lcd_put5x8(PSTR(" Build: "));
-            printHEX5x8(BUILD_NUMBER>>8); printHEX5x8(BUILD_NUMBER&0x00FF);
-            lcd_goto(0,1); lcd_put5x8(PSTR("TimerF: "));
-            lcd_goto(0,2); lcd_put5x8(PSTR("XMEGA rev")); putchar5x8('A'+MCU.REVID);
-            lcd_goto(0,3); lcd_put5x8(PSTR("Logic: "));
-            lcd_goto(0,4); lcd_put5x8(PSTR("Reset: "));
-            lcd_goto(0,5); lcd_put5x8(PSTR("Battery: "));
-            lcd_goto(0,15); lcd_put5x8(PSTR("OFFSET"));
+        clr_display();
+        lcd_goto(0,0);
+        lcd_put5x8(VERSION); lcd_put5x8(PSTR(" Build: "));
+        printHEX5x8(BUILD_NUMBER>>8); printHEX5x8(BUILD_NUMBER&0x00FF);
+        lcd_goto(0,1); lcd_put5x8(PSTR("TimerC: "));
+        lcd_goto(0,2); lcd_put5x8(PSTR("TimerF: "));
+        lcd_goto(0,3); lcd_put5x8(PSTR("XMEGA rev")); putchar5x8('A'+MCU.REVID);
+        lcd_goto(0,4); lcd_put5x8(PSTR("Logic: "));
+        lcd_goto(0,5); lcd_put5x8(PSTR("Reset: "));
+        lcd_goto(0,6); lcd_put5x8(PSTR("Battery: "));
+        lcd_goto(0,7); lcd_put5x8(PSTR("Clock: "));
+        lcd_goto(0,15); lcd_put5x8(PSTR("OFFSET   FAST    SLOW"));
+        SoundOff();
+        VPORT1.OUT = 0; // Turn off LEDs
+        lcd_goto(64,1); printHEX5x8(TCC1.CNTH); printHEX5x8(TCC1.CNTL);
+        lcd_goto(64,2); printHEX5x8(TCF0.CNTH); printHEX5x8(TCF0.CNTL);
+        lcd_goto(64,4); printHEX5x8(VPORT2.IN);   // Shows the logic input data
+        lcd_goto(64,5); printHEX5x8(RST.STATUS);    // Show reset cause
+        lcd_goto(64,6); print16_5x8(batt);
+        lcd_goto(64,7); printHEX5x8(CLK.CTRL); printHEX5x8(OSC.CTRL); printHEX5x8(OSC.STATUS); printHEX5x8(OSC.XOSCFAIL);
+        for(uint8_t i=0; i<16; i++) {           // Print GPIO registers
+            if(i<8) lcd_goto(i*16,8);
+            else lcd_goto((i-8)*16,9);
+            printHEX5x8(*((uint8_t *)i));
         }
-        lcd_goto(64,1); printHEX5x8(TCF0.CNTH); printHEX5x8(TCF0.CNTL);
-        lcd_goto(64,3); printHEX5x8(VPORT2.IN);   // Shows the logic input data
-        lcd_goto(64,4); printHEX5x8(RST.STATUS);    // Show reset cause
-        lcd_goto(64,5); print16_5x8(batt);
         if(testbit(Misc,userinput)) {
             clrbit(Misc, userinput);
             if(testbit(Buttons,KML)) setbit(WatchBits,goback);
             if(testbit(Buttons,K1)) { CalibrateOffset(); setbit(Misc, redraw); }
+            if(testbit(Buttons,K2)) CPU_Fast();
+            if(testbit(Buttons,K3)) CPU_Slow();
         }
         u8CursorX=0; u8CursorY=bar;
         for(uint8_t i=0; i<128; i++) display_xor(255);
         bar++; if(bar>=16) bar=0;
-        SoundOff();
-        VPORT1.OUT = 0; // Turn off LEDs
         dma_display();
+        SwitchBuffers();
         WaitDisplay();
-        SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
-        asm("sleep");
-        asm("nop");
+        SLP();          // Sleep
     } while(!testbit(WatchBits,goback));
+    TCC0.CTRLA = 0;
+    TCC1.CTRLA = 0;
+    PR.PRPC  |= 0b00000011;         // Disable TCC0 TCC1C clocks
     setbit(MStatus, update);
 }
 
@@ -941,9 +979,7 @@ void About(void) {
     dma_display();
     WaitDisplay();
     do {
-        SLEEP.CTRL = SLEEP_SMODE_PSAVE_gc | SLEEP_SEN_bm;
-        asm("sleep");
-        asm("nop");
+        SLP();          // Sleep
     } while(!testbit(Misc,userinput));
     clrbit(Misc, userinput);
     setbit(MStatus, update);

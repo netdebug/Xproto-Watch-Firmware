@@ -1,3 +1,19 @@
+/*****************************************************************************
+
+XMEGA Oscilloscope and Development Kit
+
+Gabotronics
+December 2018
+
+Copyright 2012 Gabriel Anzziani
+
+This program is distributed under the terms of the GNU General Public License
+
+www.gabotronics.com
+email me at: gabriel@gabotronics.com
+
+*****************************************************************************/
+
 #ifndef FFT_N
 #define FFT_N	256		/* Number of samples (64,128,256,512). Don't forget to clean! */
 

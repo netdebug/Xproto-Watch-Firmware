@@ -1,21 +1,23 @@
-/* ----------------------------------------------------------------------------
-	128x64 Graphic LCD management for SSD1306 driver
+/*****************************************************************************
 
-	FILE NAME 	: display.h
-	
-	DESCRIPTION	: The purpose of this function is to manage a graphic LCD
-			  by providing function for control and display text and graphic 
-			  
-	AUTHOR		: Gabriel Anzziani
-    www.gabotronics.com
+XMEGA Oscilloscope and Development Kit
 
-*/
+Gabotronics
+December 2018
+
+Copyright 2012 Gabriel Anzziani
+
+This program is distributed under the terms of the GNU General Public License
+
+www.gabotronics.com
+email me at: gabriel@gabotronics.com
+
+*****************************************************************************/
 
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
 #include <stdint.h>
-#include "fonts.h"
 
 // LS013B7DH03 Commands
 // M0 M1 M2 DMY DMY DMY DMY DMY
@@ -54,7 +56,7 @@ extern const int8_t tdown[];
 extern const int8_t tup[];
 extern const int8_t tdual[];
 
-#define lcd_goto(x,y) { u8CursorX=(x); u8CursorY=(y); }
+#define lcd_goto(x,y) do { u8CursorX=(x); u8CursorY=(y); } while(0)
 
 /* EXTERN Function Prototype(s) */
 void SetMainBuffer(void);        // Use main LCD buffer
@@ -71,6 +73,7 @@ void printN(uint8_t Data);
 void print16_5x8(uint16_t Data);
 void printN5x8(uint8_t Data);
 void printN_5x8(uint8_t Data);
+void printN_7seg(uint8_t x, uint8_t y, uint8_t Data, uint8_t digits);
 void SwitchBuffers(void);
 void clr_display(void);
 void clr_display_1(void);

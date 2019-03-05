@@ -1,11 +1,11 @@
 /****************************************************************************
 
-XMEGA Oscilloscope and Development Kit
+Oscilloscope Watch
 
 Gabotronics
-February 2012
+December 2018
 
-Copyright 2012 Gabriel Anzziani
+Copyright 2018 Gabriel Anzziani
 
 This program is distributed under the terms of the GNU General Public License 
 
@@ -45,7 +45,7 @@ enum {  // Menu reference:
     MMAIN5,     // "CURSORS \0      DISPLAY \0       AWG", // Menu Select 5 - Misc
     MAWG2,      // "WAVE TYPE  \0   SWEEP   \0 FREQUENCY", // AWG Menu 2
     MAWG4,      // " EXP      \0    NOISE   \0   CUSTOM ", // AWG Menu 4
-    MAWG5,      // " SLOW     \0    MODE    \0    RANGE ", // AWG Menu 5
+    MAWG5,      // " SPEED    \0    MODE    \0    RANGE ", // AWG Menu 5
     MAWG6,      // "SW FREQ    \0   SW AMP  \0  SW DUTY ", // AWG Menu 6
 //    MAWG7,      // " SWEEP    \0  CV/GATE  \0 POS. RANGE", // AWG Menu 7
 //    MCVG,       // "CV/GATE   \0  CONTINUOUS \0   C1=1V ", // AWG CV/Gate

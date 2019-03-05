@@ -1,3 +1,19 @@
+/****************************************************************************
+
+Oscilloscope Watch
+
+Gabotronics
+December 2018
+
+Copyright 2018 Gabriel Anzziani
+
+This program is distributed under the terms of the GNU General Public License 
+
+www.gabotronics.com
+email me at: gabriel@gabotronics.com
+
+*****************************************************************************/
+
 #ifndef _TIME_H
 #define _TIME_H
 
@@ -24,6 +40,8 @@ void Watch(void);
 void Calendar(void);
 void findweekday(time_var *timeptr);
 void SetTimeTimer(void);
+
+#define MAX_FACES       3   // Number of implemented watch faces
 
 // Change item definitions
 #define SECOND          1

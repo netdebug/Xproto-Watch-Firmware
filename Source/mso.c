@@ -3,26 +3,11 @@
 XMEGA Oscilloscope and Development Kit
 
 Gabotronics
-October 2018
+December 2018
 
 Copyright 2018 Gabriel Anzziani
 
-This file is proprietary software.
-
-The customer has the right to:
-
-    Download, read, and modify the source code
-    Compile and make use of their own modifications
-    Distribute their changes in a compiled form
-    Take backups of the source code for their own use
-
-The customer does not have the right to:
-
-    Sell or distribute the source code
-    Sell or distribute a modified version of the code
-    Use the source code to create a competing product
-    Receive any kind of support for their modifications (though questions are welcome)
-
+This program is distributed under the terms of the GNU General Public License 
 
 www.gabotronics.com
 email me at: gabriel@gabotronics.com
@@ -32,14 +17,12 @@ email me at: gabriel@gabotronics.com
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 #include "main.h"
 #include "mso.h"
 #include "logic.h"
 #include "awg.h"
 #include "interface.h"
 #include "USB\usb_xmega.h"
-#include "tables.h"
 #include "utils.h"
 
 // Function prototypes
@@ -128,7 +111,7 @@ const uint16_t timeval[22] PROGMEM = {   // = Time division * 10000 / (16*250)
     25,50,125,250,500,1250 };
 
 const char menustxt[][35] PROGMEM = {           // Menus:
-    "  STOP  \0      TIME+    \0   TIME- ",     // 0  Time division
+    "  STOP  \0      TIME+    \0    TIME-",     // 0  Time division
     " CH ON   \0     GAIN-    \0   GAIN+ ",     // 1  Channel
     "LOGIC ON \0     SELECT   \0 PROTOCOL",     // 2  Logic
     " NORMAL   \0    SINGLE   \0 CIRCULAR",     // 3  Sniffer mode
@@ -184,7 +167,7 @@ const char menupoint[] PROGMEM = {  // Menu text table
     7,  // MSOURCE Trigger Source
     8,  // MDISPLAY1 Display
     9,  // MMETER Meter mode
-    10,  // MAWG AWG
+    10, // MAWG AWG
     11, // MCH1OPT Channel 1 options
     11, // MCH2OPT Channel 2 options
     12, // MCHDOPT1 Logic options 1
@@ -291,6 +274,77 @@ const char Next[] PROGMEM = {  // Next Menu
     MCURSOR1,   // MCH2HC2 H Cursor 2 CH2
 };
 
+const char Prev[] PROGMEM = {  // Previous Menu
+//  Next:          Current:
+    MMAIN5,     // Mdefault default
+    MMAIN1,     // MCH1 Channel 1
+    MMAIN1,     // MCH2 Channel 2
+    MMAIN1,     // MCHD Logic
+    MCHD,       // MSNIFFER Sniffer mode
+    MMAIN2,     // MTRIGTYPE Trigger Type
+    MMAIN5,     // MCURSOR1 Cursor
+    MMAIN4,     // MWINDOW Spectrum Analyzer Window
+    MMAIN2,     // MSOURCE Trigger Source
+    MMAIN5,     // MDISPLAY1 Display
+    MMAIN3,     // MMETER Meter mode
+    MMAIN5,     // MAWG AWG
+    MCH1,       // MCH1OPT 1 Channel 1
+    MCH2,       // MCH2OPT 2 Channel 2
+    MCHD,       // MCHDOPT1 3 Logic
+    MTIME,      // MMAIN1 Menu Select 1 - Channel
+    MMAIN1,     // MMAIN2 Menu Select 2 - Trigger
+    MMAIN2,     // MMAIN3 Menu Select 3 - Mode
+    MMAIN3,     // MMAIN4 Menu Select 4 - FFT
+    MMAIN3,     // MMAIN5 Menu Select 5 - Misc
+    MMAIN5,     // MAWG2 AWG Menu 2
+    MAWG,       // MAWG4 AWG Menu 4
+    MAWG6,      // MAWG5 AWG Menu 5
+    MAWG2,      // MAWG6 AWG Menu 6
+//    Mdefault,   // MAWG7 AWG Menu 7
+//    Mdefault,   // MCVG CV/Gate Menu
+    MMAIN3,     // MSCOPEOPT Scope options
+    MMAIN2,     // MTRIG2 Trigger Menu 2
+    MTRIG2,     // MTRIGMODE Trigger edge and mode
+    MCURSOR1,   // MCURSOR2 More Cursor Options
+    MCHD,       // MCHDSEL1 Logic Channel Select
+    MCHDSEL1,   // MCHDSEL2 Logic Channel Select
+    MCHDSEL2,   // MCHDSEL3 Logic Channel Select
+    MSOURCE,    // MTSEL1 Logic Trigger Select
+    MTSEL1,     // MTSEL2 Logic Trigger Select
+    MTSEL2,     // MTSEL3 Logic Trigger Select
+    MCHDOPT1,   // MCHDOPT2 Decode
+    MCHD,       // MPROTOCOL Protocol
+    MCHDOPT2,   // MCHDPULL Logic Inputs Pull
+    MMAIN5,     // MDISPLAY2 Display
+    MPROTOCOL,  // MSPI SPI Clock polarity and phase
+    MCH1OPT,    // MCH1MATH Channel 1 math
+    MCH2OPT,    // MCH2MATH Channel 2 math
+    MAWG2,      // MAWG3 AWG Menu 3
+    MAWG5,      // MSWMODE Sweep mode menu
+    MPROTOCOL,  // MUART UART Settings
+    MTRIG2,     // MPOSTT Post Trigger
+    MAWG2,      // MAWGFREQ Frequency
+    MSOURCE,    // MTLEVEL Trigger Level
+    MSOURCE,    // MTW1 Trigger Window 1
+    MSOURCE,    // MTW2 Trigger Window 2
+    MAWG5,      // MSW1 Sweep Start
+    MAWG5,      // MSW2 Sweep End
+    MMAIN5,     // MHPOS Run/Stop - Horizontal Scroll
+    MAWG5,      // MSWSPEED Sweep Speed
+    MAWG3,      // MAWGAMP Amplitude
+    MAWG3,      // MAWGOFF Offset
+    MAWG3,      // MAWGDUTY Duty Cycle
+    MTRIG2,     // MTHOLD Trigger holdoff
+    MCH1OPT,    // MCH1POS CH1 Channel position
+    MCH2OPT,    // MCH2POS CH2 Channel position
+    MCURSOR1,   // MVC1 V Cursor 1
+    MCURSOR1,   // MVC2 V Cursor 2
+    MCURSOR1,   // MCH1HC1 H Cursor 1 CH1
+    MCURSOR1,   // MCH1HC2 H Cursor 2 CH1
+    MCURSOR1,   // MCH2HC1 H Cursor 1 CH2
+    MCURSOR1,   // MCH2HC2 H Cursor 2 CH2
+};
+
 const char gaintxt[][5] PROGMEM = {             // Gain Text with x1 probe
     "5.12", "2.56", "1.28", "0.64",             //  5.12,  2.56, 1.28, 0.64
     "0.32", "0.16", { '8', '0', 0x1A, 0x1B, 0 } //  0.32,  0.16,  80m, invalid
@@ -377,10 +431,10 @@ void MSO(void) {
     // Event System
     EVSYS.CH0MUX    = 0xE8;     // Event CH0 = TCE1 overflow used for ADC
     EVSYS.CH1MUX    = 0x20;     // Event CH1 = ADCA CH0 conversion complete
-    //EVSYS.CH2MUX    = 0x5A;     // Event CH2 = PORTB Pin 2 (External Trigger)
+    //EVSYS.CH2MUX              // Event CH2 = Frequency counter source
     EVSYS.CH3MUX    = 0xD8;     // Event CH3 = TCD1 overflow used for DAC
-    //EVSYS.CH4MUX    = 0xC0;     // Event CH4 = TCC0 overflow used for freq. measuring
-    EVSYS.CH5MUX    = 0xC8;     // Event CH5 = TCC1 overflow used for freq. measuring
+    //EVSYS.CH4MUX              // Event CH4 = RTC overflow (every second)
+    EVSYS.CH5MUX    = 0xE0;     // Event CH5 = TCE0 overflow used for freq. measuring
     EVSYS.CH6MUX    = 0x8F;     // Event CH6 = CLKPER / 32768
     EVSYS.CH7MUX    = 0xD0;     // Event CH7 = TCD0 underflow
 
@@ -396,7 +450,7 @@ void MSO(void) {
     // DMA for DAC
     DMA.CH3.ADDRCTRL  = 0xD0;   // Reload after transaction, Increment source
     DMA.CH3.TRIGSRC   = 0x26;   // Trigger source is DACB CH1
-    DMA.CH3.TRFCNT    = 1024;   // AWG Buffer is 1024 bytes
+    DMA.CH3.TRFCNT    = BUFFER_AWG;   // AWG Buffer size
 	DMA.CH3.SRCADDR0  = (((uint16_t) AWGBuffer)>>0*8) & 0xFF;
 	DMA.CH3.SRCADDR1  = (((uint16_t) AWGBuffer)>>1*8) & 0xFF;
 //	DMA.CH3.SRCADDR2  = 0;
@@ -958,7 +1012,7 @@ void MSO(void) {
         }
 ///////////////////////////////////////////////////////////////////////////////
 // Display Multimeter
-        if(MFFT<0x20) {
+        if(MFFT<0x20) {     // Meter Mode
             if(!testbit(MStatus, triggered) || (testbit(MStatus,vdc) &&  testbit(MStatus,vp_p))) {  // Data ready or in Counter mode
                 if(adjusting==0) {              // Done adjusting, now show data
                     adjusting = 4;              // Re-init autosetup
@@ -1037,7 +1091,7 @@ void MSO(void) {
             CH2.f=fft_stuff(DC.CH2data);
 			MFFT=tempmfft;
             j=5;
-            if(MFFT<0x20) {
+            if(MFFT<0x20) { // Meter Mode
                 if(testbit(MStatus, vp_p) || testbit(MStatus, vdc)) j=3; // Limit maximum gain on meter mode when measuring V
             }
             checknext:
@@ -1131,7 +1185,6 @@ void MSO(void) {
 // Check User Input
         if(testbit(Misc, userinput)) {
             uint8_t oldsource=M.Tsource;
-            oldsource=M.Tsource;
             clrbit(Misc, userinput);
             if(testbit(Buttons,KML)) {
                 if(Menu==MTIME) {
@@ -1140,10 +1193,13 @@ void MSO(void) {
                 }
                 Menu=MTIME;
             }                 
-            // Check key inputs KA thru KD depending on the menu
-            if(testbit(Buttons,KBL)) {
+            // Check key inputs depending on the menu
+            if(testbit(Buttons,KBR)) {  // Next menu item
                 if(Menu==MSNIFFER) setbit(MStatus, gosniffer);
                 Menu=pgm_read_byte_near(Next+Menu); // Menu flow
+            }
+            if(testbit(Buttons,KBL)) {  // Previous menu item
+                Menu=pgm_read_byte_near(Prev+Menu); // Menu flow
             }
             // Shortcuts
             if(Menu>=MSWSPEED && Menu<=MCH2POS && testbit(Buttons,K1)) {
@@ -1364,11 +1420,11 @@ void MSO(void) {
                     }
                     if(testbit(Buttons,K3)) {       // FREQUENCY / COUNTER
                         if(!testbit(MStatus,vdc) && !testbit(MStatus,vp_p)) {
-                            setbit(MStatus,vdc);
+                            setbit(MStatus,vdc);    // Set Counter mode
                             setbit(MStatus,vp_p);
                         }
                         else {
-                            clrbit(MStatus,vdc);
+                            clrbit(MStatus,vdc);    // Set Frequency mode
                             clrbit(MStatus,vp_p);
                         }
                     }
@@ -2650,39 +2706,53 @@ cancelvdc:
                         printV((int16_t)CH1.vpp*128, M.CH1gain, CH1ctrl);
         lcd_goto(64,2); printV((int16_t)CH2.vpp*128, M.CH2gain, CH2ctrl);
     }
-    else {                          // Display frequency
-        // TCC1:Lo16 TCE1:Hi16 TCC0:Timer
-        // Event CH2:Input, Event CH4:TCC0 overflow, Event CH5:TCC1 overflow
+    else {                          // Measure frequency
+        // TCE0:Lo16 TCE1:Hi16 RTC:Timer
+        // Event CH2:Input, Event CH4:RTC overflow, Event CH5:TCE0 overflow
         uint32_t freqv;
-		if(!testbit(MStatus,vdc) || TCC1.CTRLB==0) { // Reset counters
-            second=minute=hour=0;           // Reset time
-            cli();
-            TCC0.CTRLA = 0;                 // Stop time keeper
-            TCC0.CTRLE = 0;                 // Normal mode
-            TCC0.CTRLFSET = 0x0C;           // Reset timer
-	        TCC0.PER = 31250;               // Period is 1 second, one tick added to sync
-			TCE1.CTRLA = 0;                 // Stop timer prior to reset
-			TCE1.CTRLFSET = 0x0C;           // Reset timer
-			TCE1.CTRLB =  TC0_CCAEN_bm;     // Capture enable
-			TCE1.CTRLD = 0x3C;              // Input capture on event, delay compensate, Event CH4
-			TCE1.CTRLA = TC_CLKSEL_EVCH5_gc;// Event CH5 is TCE1 clock source
-            TCE1.PER = 0x05F4;              // Max value before rolling over: 99942399
-			TCC1.CTRLA = 0;                 // Stop timer prior to reset
-			TCC1.CTRLFSET = 0x0C;           // Reset timer
-			TCC1.CTRLB = TC1_CCAEN_bm;      // Capture enable
-			TCC1.CTRLD = 0x2C;              // Input capture on event, no delay compensate, Event CH4
-            TCC0.CTRLA =  7;                // Start Timer, because of the common prescaler, the start is variable
-            while(TCC0.CNTL==0);            // Sync with common prescaler
-            TCC1.CTRLA = TC_CLKSEL_EVCH2_gc;// Event CH2 is TCC1 clock source
-            sei();
-            while(!testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {	// Should be ready in 1 second
-                if(testbit(MStatus,update) || testbit(MStatus, updatemso)) goto cancelfreq;
+        static uint32_t new_capture, last_capture;
+		if(!testbit(MStatus,vdc)) {             // Frequency mode
+            if(TCC0.CTRLD != 0x3C) {            // Registers not set
+                new_capture = last_capture = 0;
+			    TCC0.CTRLA = 0;                 // Stop timer prior to reset
+			    TCC0.CTRLFSET = 0x0F;           // Reset timer
+			    TCC0.CTRLB =  TC0_CCAEN_bm;     // Capture enable
+			    TCC0.CTRLD = 0x3C;              // Input capture on event, delay compensate, Event CH4
+			    TCC0.CTRLA = TC_CLKSEL_EVCH5_gc;// Event CH5 is TCE1 clock source
+                TCC0.PER = 0x05F4;              // Max value before rolling over: 99942399
+			    TCE0.CTRLA = 0;                 // Stop timer prior to reset
+			    TCE0.CTRLFSET = 0x0F;           // Reset timer
+			    TCE0.CTRLB = TC1_CCAEN_bm;      // Capture enable
+			    TCE0.CTRLD = 0x2C;              // Input capture on event, no delay compensate, Event CH4
+                TCE0.CTRLA = TC_CLKSEL_EVCH2_gc;// Event CH2 (Frequency input) is TCC1 clock source
             }
+            freqv = new_capture - last_capture;
 		}
-		else EVSYS.STROBE = 0x10;           // In counter mode, manually trigger the capture (strobe CH4 event)
-        if(testbit(TCC0.INTFLAGS,TC1_OVFIF_bp)) {
-            TCC0.INTFLAGS =0xFF;    // Clear flag
-            TCC0.PER = 31249;       // Adjust Period to 1 second
+		else {  // Counter mode
+            if(TCC0.CTRLD != 0x3F) {            // Registers not set
+                second=minute=hour=0;           // Reset time
+			    TCC0.CTRLA = 0;                 // Stop timer prior to reset
+			    TCC0.CTRLFSET = 0x0F;           // Reset timer
+			    TCC0.CTRLB =  TC0_CCAEN_bm;     // Capture enable
+			    TCC0.CTRLD = 0x3F;              // Input capture on event, delay compensate, Event CH7
+			    TCC0.CTRLA = TC_CLKSEL_EVCH5_gc;// Event CH5 is TCE1 clock source
+			    TCC0.PER = 0x05F4;              // Max value before rolling over: 99942399
+			    TCE0.CTRLA = 0;                 // Stop timer prior to reset
+			    TCE0.CTRLFSET = 0x0F;           // Reset timer
+			    TCE0.CTRLB = TC1_CCAEN_bm;      // Capture enable
+			    TCE0.CTRLD = 0x2F;              // Input capture on event, no delay compensate, Event CH7
+			    TCE0.CTRLA = TC_CLKSEL_EVCH2_gc;// Event CH2 (Frequency input) is TCC1 clock source
+            }
+            freqv = TCC0.CCA;
+            freqv = (freqv<<16) + TCE0.CCA;
+        }
+        if(testbit(RTC.INTFLAGS, RTC_COMPIF_bp)) {
+            if(!testbit(MStatus,vdc)) {
+                last_capture = new_capture;
+                new_capture = TCC0.CCA;
+                new_capture = (new_capture<<16) + TCE0.CCA;  
+            }
+            RTC.INTFLAGS = 0xFF;    // Clear flag
             if(!testbit(MStatus, stop)) second++;
             if(second>=60) {
                 second=0;
@@ -2694,17 +2764,17 @@ cancelvdc:
             }
         }
         if(!testbit(MStatus,vdc)) { // Display CH1 and CH2 frequencies
-            freqv=pgm_read_dword_near(freqval+Srate)/256;
-            printF( 0,2,(int32_t)(CH1.f)*freqv);
-            printF(64,2,(int32_t)(CH2.f)*freqv);
+            uint32_t f;
+            f=pgm_read_dword_near(freqval+Srate)/256;
+            printF( 0,2,(int32_t)(CH1.f)*f);
+            printF(64,2,(int32_t)(CH2.f)*f);
         } else {                   // Display time 
             lcd_goto(48,1);
             printN(hour); GLCD_Putchar(':');
             printN(minute); GLCD_Putchar(':');
             printN(second);
         }
-        freqv = TCE1.CCA;
-        freqv = (freqv<<16) + TCC1.CCA;
+
         setbit(Misc,negative);
         printF(8,5,freqv);          // Print count
         T.IN.METER.Freq = freqv;
@@ -2900,10 +2970,14 @@ void Apply(void) {
     TCC1.CTRLA = 0;
     TCC1.CTRLB = 0;
     // TCC0 controls the auto trigger and auto key repeat
-    TCC0.CTRLA = 0x0F;      // Event CH7: 0.04096mS period - 24.4140625 Hz
-    TCC0.CTRLE = 0x02;      // Timer TCC0 Split Mode
-    TCC0.PERH = 24;         // Auto Key Timeout is 1.024 second
-    TCC0.PERL = M.Ttimeout;
+    if(MFFT>=0x20 ||                                       // Not in Meter mode, or
+    ((testbit(MStatus,vdc) && !testbit(MStatus,vp_p)) ||  // VDC or VPP, but not both
+    (!testbit(MStatus,vdc) &&  testbit(MStatus,vp_p)))) { // Don't modify during frequency counter
+        TCC0.CTRLA = 0x0F;      // Event CH7: 0.04096mS period - 24.4140625 Hz
+        TCC0.CTRLE = 0x02;      // Timer TCC0 Split Mode
+        TCC0.PERH = 24;         // Auto Key Timeout is 1.024 second
+        TCC0.PERL = M.Ttimeout;
+    }
     // TCD0: TCD0H controls LCD refresh rate, TCD0L is the slow clock generator
     TCD0.CTRLA = 0x0E;      // Event CH6 (CLKPER / 32768 -> 1.024ms)
     TCD0.CTRLE = 0x02;      // Timer TCD0 Split Mode
